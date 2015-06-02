@@ -8,11 +8,11 @@ Copyright © 2015 Andy Foy Consulting
 
 Overview
 --------
-DataSelector is a MapBasic tool and associated SQL scripts to extract biodiversity information from SQL Server based on any selection criteria. The output files can be created as MapInfo TAB format (.tab) files and/or ESRI shapefile (.tab) files and/or Comma Separated Value (.csv) files and can be combined together, if required, as compressed (.zip) files.
+DataSelector is a MapBasic tool and associated SQL scripts to extract biodiversity information from SQL Server based on any selection criteria. The output files can be created as MapInfo TAB format (.tab) files, ESRI shapefile (.shp) files or Comma Separated Value (.csv) files.
 
 Requirements
 ------------
-The Data Extractor Tool requires the following:
+The Data Selector Tool requires the following:
 
  - MapInfo 10.0 or higher
 
