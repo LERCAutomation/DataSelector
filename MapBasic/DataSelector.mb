@@ -1,0 +1,1268 @@
+'* DataSelector is a MapBasic tool and associated SQL scripts to extract
+'* biodiversity information from SQL Server based on any selection criteria.
+'*
+'* Copyright © 2015 Greenspace Information for Greater London (GiGL)
+'* Copyright © 2015 Andy Foy Consulting
+'* 
+'* This file is part of the MapInfo tool 'DataSelector'.
+'* 
+'* DataSelector is free software: you can redistribute it and/or modify
+'* it under the terms of the GNU General Public License as published by
+'* the Free Software Foundation, either version 3 of the License, or
+'* (at your option) any later version.
+'* 
+'* DataSelector is distributed in the hope that it will be useful,
+'* but WITHOUT ANY WARRANTY; without even the implied warranty of
+'* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+'* GNU General Public License for more details.
+'* 
+'* You should have received a copy of the GNU General Public License
+'* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
+'*
+'***************************************************************
+'* DataSelector v1.00
+'*
+'* Creates a dialog window which lists the SQL species tables
+'* in the remote SQL Server and allows the user to enter a
+'* where clause text used to select a subset of the species
+'* records. It will then create a MapInfo and/or ArcGIS file
+'* and/or a CSV file of the selected records.
+'*
+'*
+'* Created:		Andy Foy - June 2015
+'* Last revised:	Andy Foy - June 2015
+'***************************************************************
+Include "DataSelector.def"
+
+Sub Main
+'***************************************************************
+'* Main sub-routine
+'***************************************************************
+
+	'-------------------------------------------------
+	' Create a new menu
+	'-------------------------------------------------
+	Create Menu "&Data Selector" As
+	   "&Run Data Selector ..." Calling OpenDialog,
+	   "(-",
+	   "&About Data Selector ..." Calling AboutBox,
+	   "E&xit Data Selector" Calling egsit
+
+	'-------------------------------------------------
+	' Add the new menu item to the Tools menu
+	'-------------------------------------------------
+	Alter Menu "Tools" Add
+		"Data Selector" As "Data Selector"
+
+	Exit Sub
+
+End Sub
+
+Sub GetDefaultValues
+'***************************************************************
+'* Retrieve all the default values from the config file
+'* which is a XML document
+'***************************************************************
+
+	Dim bParseError As SmallInt
+	Dim hXMLDoc As MIXmlDocument
+	Dim hXMLRoot As MIXmlNode
+	Dim hXMLNode As MIXmlNode
+	Dim hXMLFilesNodeList As MIXMLNodeList
+	Dim hXMLFilesNodeParent As MIXmlNode
+	Dim hXMLFilesNode As MIXmlNode
+
+	OnError Goto GetVariablesError
+
+	'-------------------------------------------------
+	' Create a document handle
+	'-------------------------------------------------
+	hXMLDoc = MIXmlDocumentCreate()
+	If hXMLDoc Then
+
+		'-------------------------------------------------
+		' Load the document into the document handle
+		'-------------------------------------------------
+		Dim iXMLLoad As SmallInt
+		iXMLLoad = MIXmlDocumentLoad(hXMLDoc, ApplicationDirectory$() + "DataSelector.xml", bParseError, FALSE, FALSE)
+		if iXMLLoad > 0 Then
+
+			'-------------------------------------------------
+			' Get a handle on the XML root node of the document
+			'-------------------------------------------------
+			hXMLRoot = MIXmlDocumentGetRootNode(hXMLDoc)
+			If hXMLRoot Then
+
+				'-------------------------------------------------
+				' Get a handle on the DataExtractor node
+				'-------------------------------------------------
+				hXMLNode = MIXmlSelectSingleNode(hXMLRoot, "DataSelector")
+	          If hXMLNode Then
+	
+					'-------------------------------------------------
+					' Load the default values from the child nodes
+					' under the DataExtractor node
+					'-------------------------------------------------
+					' Log file for storing output messages
+					sLogFileName = GetSingleNodeValue(hXMLNode, "LogFileName")
+
+					' File DSN path and name containing remote SQL database connection settings
+					sFileDSN = GetSingleNodeValue(hXMLNode, "FileDSN")
+
+					' Default file path to store extracts in sub-folders
+					sDefaultPath = GetSingleNodeValue(hXMLNode, "DefaultPath")
+
+					' Default database schema to use in the remote SQL database
+					sDefaultSchema = GetSingleNodeValue(hXMLNode, "DatabaseSchema")
+
+					' SQL used to list the names of species tables in the remote SQL database
+					sTableListSQL = GetSingleNodeValue(hXMLNode, "TableListSQL")
+
+					' Maximum number of records to be downloaded at one time
+					iRecMax = GetSingleNodeValue(hXMLNode, "RecMax")
+
+					' Default setting for the output file format
+					sDefaultFormat = GetSingleNodeValue(hXMLNode, "DefaultFormat")
+
+				End If
+
+			End If
+
+		Else
+
+			Note "Error : " + MIGetErrorMessage()
+
+		End If
+
+	End If
+
+CleanUp:
+	'-------------------------------------------------
+	' Destroy the handles
+	'-------------------------------------------------
+	If hXMLFilesNode Then Call MIXmlNodeDestroy(hXMLFilesNode) End If
+	If hXMLFilesNodeList Then Call MIXmlNodeListDestroy(hXMLFilesNodeList) End If
+	If hXMLFilesNodeParent Then Call MIXmlNodeDestroy(hXMLFilesNodeParent) End If
+	If hXMLNode Then Call MIXmlNodeDestroy(hXMLNode) End If
+	If hXMLRoot Then Call MIXmlNodeDestroy(hXMLRoot) End If
+	If hXMLDoc Then Call MIXmlDocumentDestroy(hXMLDoc) End If
+
+	Exit Sub
+
+GetVariablesError:
+	Note str$(Err()) + ": " + Error$()
+	Exit Sub
+
+End Sub
+
+Sub OpenDialog
+'***************************************************************
+'* Create the user dialog window
+'***************************************************************
+
+	'-------------------------------------------------
+	' Trap errors
+	'-------------------------------------------------
+    OnError Goto ErrorTrap
+
+	'-------------------------------------------------
+	' Retrieve the default values from the config file
+	'-------------------------------------------------
+	Call GetDefaultValues
+
+	'-------------------------------------------------
+	' Build a new dialog window
+	'-------------------------------------------------
+	Dialog
+		Title "Data Extractor"
+		Width 300
+		Height 220
+		Position 50,70
+		Calling DialogSetup
+
+	'-------------------------------------------------
+	' Add a column names textbox
+	'-------------------------------------------------
+	Control StaticText
+		Title "Column Names:"
+		Position 10,10
+	Control EditText
+		ID 1
+		Position 10,20
+		Height 60
+		Width 170
+		Into sColumnNames
+
+	'-------------------------------------------------
+	' Add a where clause textbox
+	'-------------------------------------------------
+	Control StaticText
+		Title "Where Clause:"
+		Position 10,90
+	Control EditText
+		ID 2
+		Position 10,100
+		Height 90
+		Width 170
+		Into sWhereClause
+
+	'-------------------------------------------------
+	' Add a SQL species table listbox
+	'-------------------------------------------------
+	Control StaticText
+		Title "SQL Species Tables:"
+		Position 190,10
+	Control ListBox
+		ID 3
+		Title ""
+		Position 190, 20
+		Height 60
+		Width 100
+
+	'-------------------------------------------------
+	' Add a radio group box for the output format
+	'-------------------------------------------------
+	Control StaticText
+		Title "Output File Format:"
+		Position 190,90
+	Control RadioGroup
+		ID 4
+		Title "MapInfo (.tab) file;ESRI (.shp) file;Comma-Separated (.csv) file"
+		Position 190,105
+		Value 1
+		Into iOutputFormat
+
+	'-------------------------------------------------
+	' Add a checkbox for clearing the log file
+	'-------------------------------------------------
+	Control CheckBox
+		ID 6
+		Title "Clear log file?"
+		Position 10,200
+		Value TRUE
+		Into bClearLog
+
+	'-------------------------------------------------
+	' Add Save and Load buttons
+	'-------------------------------------------------
+	Control Button
+		ID 7
+		Title "Save"
+		Position 95,200
+		Width 40
+		Calling SaveQuery
+	Control Button
+
+		ID 8
+		Title "Load"
+		Position 140,200
+		Width 40
+		Calling LoadQuery
+
+	'-------------------------------------------------
+	' Add Ok and Cancel buttons
+	'-------------------------------------------------
+	Control CancelButton
+		Position 205,200
+		Width 40
+	Control OKButton
+		Position 250,200
+		Width 40
+		Calling CheckSelection
+
+	If CommandInfo(CMD_INFO_DLG_OK) And
+		iExtractTot > 0 Then
+
+		'-------------------------------------------------
+		' Clear the log file
+		'-------------------------------------------------
+		If bClearLog = True Then
+			If FileExists(sLogFileName) Then
+				Kill sLogFileName
+			End If
+		End If
+
+		Call MyPrint("----------------------------------------------------------------------")
+		Call MyPrint("Process started!")
+		Call MyPrint("----------------------------------------------------------------------")
+		Call MyPrint("")
+
+		'-------------------------------------------------
+		' Process the selection
+		'-------------------------------------------------
+		Call ProcessSelection
+
+		Call MyPrint("")
+		Call MyPrint("----------------------------------------------------------------------")
+		Call MyPrint("Process completed!")
+		Call MyPrint("----------------------------------------------------------------------")
+		Dim lResponse As Logical
+		lResponse = Ask("Processing complete!" + Chr$(10) + Chr$(10) + Chr$(10) + "Show log file?", "Yes", "No")
+
+		'-------------------------------------------------
+		' Ask the user if they want to see the log file
+		'-------------------------------------------------
+		If lResponse = True Then
+			'-------------------------------------------------
+			' Open the Message window and clear it
+			'-------------------------------------------------
+			Close Window Message
+			Open Window Message
+			Set Window Message
+				Position (7,4)
+				Width 6
+				Height 5
+			Print(chr$(12))
+
+			'-------------------------------------------------
+			' Display the log file in the message window
+			'-------------------------------------------------
+			Call PrintLogFile
+
+		End If
+
+		'-------------------------------------------------
+		' Disconnect the connection to the SQL Server database
+		'-------------------------------------------------
+		Server nConn Disconnect
+	End If
+
+Done:
+	Exit Sub
+	
+ErrorTrap:
+	Note str$(Err()) + ": " + Error$()
+	Call MyPrint(str$(Err()) + ": " + Error$())
+	Resume Done
+
+End Sub
+
+Sub DialogSetup
+'***************************************************************
+' Setup the dialog window listboxes
+'***************************************************************
+
+	'-------------------------------------------------
+	' Clear the Message window and close it
+	'-------------------------------------------------
+	Print(chr$(12))
+	Close Window Message
+
+	'-------------------------------------------------
+	' Trap any connection errors
+	'-------------------------------------------------
+	OnError Goto ConnectionError
+
+	'-------------------------------------------------
+	' Connect to the SQL Server database
+	'-------------------------------------------------
+	nConn = Server_Connect("ODBC","FILEDSN=" + sFileDSN)
+	If nConn = 0 Then
+		Note "Error: Unable to connect to SQL Server!"
+		Call egsit
+	End If 
+
+	'-------------------------------------------------
+	' No longer trap any errors
+	'-------------------------------------------------
+	OnError Goto 0
+
+	'-------------------------------------------------
+	' Query all the species tables in the database
+	'-------------------------------------------------
+	Dim nStmt as Integer
+	nStmt = Server_Execute(nConn, sTableListSQL)
+
+	'-------------------------------------------------
+	' Bind to the 1st column of the results
+	'-------------------------------------------------
+	Dim aSQLTable As String
+	Dim iStatus As Integer
+	Server nStmt Bind Column 1 To aSQLTable, iStatus
+	Server nStmt Fetch Next
+
+	'-------------------------------------------------
+	' Loop through all the Species tables matching the
+	' SQL criteria and add them to the Species Tables list
+	'-------------------------------------------------
+	Dim i as integer
+	i = 1
+	While Not Server_Eot(nStmt)
+
+		'-------------------------------------------------
+		' Concatenate all the Species tables into an array
+		'-------------------------------------------------
+		Redim aSQLTables(i)
+		aSQLTables(i) = aSQLTable
+		Server nStmt Fetch Next
+		i = i + 1
+
+	Wend
+
+	'-------------------------------------------------
+	' Close the query results
+	'-------------------------------------------------
+	Server nStmt Close
+
+	'-------------------------------------------------
+	' Update the Species Table list to show the list
+	' of tables
+	'-------------------------------------------------
+	Alter Control 3 Title FROM Variable aSQLTables
+	Alter Control 3 Value 1
+
+SetDefaults:
+	'-------------------------------------------------
+	' Set the default value for the zip checkbox
+	'-------------------------------------------------
+	Do Case UCase$(sDefaultFormat)
+		Case "TAB"
+			Alter Control 4 Value 1
+		Case "SHP"
+			Alter Control 4 Value 2
+		Case "CSV"
+			Alter Control 4 Value 3
+		Case Else
+			Alter Control 4 Value 1
+	End Case
+
+Exit Sub
+
+ConnectionError:
+
+If Err() = 1333 Then
+	Note "Error: Unable to connect to SQL Server!"
+'	Call MyPrint("Error: Unable to connect to SQL Server!")
+	Call egsit
+End If
+
+End Sub
+
+Sub SaveQuery
+'***************************************************************
+'* Save the current query details to a text file
+'***************************************************************
+
+	'-------------------------------------------------
+	' Prompt the user for the query file destination
+	'-------------------------------------------------
+	Dim sQueryFile As String
+	sQueryFile = FileSaveAsDlg(sDefaultPath, "", "qsf", "Select where to save the query")
+	if sQueryFile = "" then
+		Note "No query file selected - save cancelled"
+		Exit Sub
+	End If
+
+	'-------------------------------------------------
+	' Get the path and name of the selected query file
+	'-------------------------------------------------
+	Dim sQueryPath, sQueryName As String
+	sQueryPath = PathToDirectory$(sQueryFile)
+	sQueryName = PathToFileName$(sQueryFile)
+
+	'-------------------------------------------------
+	' Check the selected directory already exists
+	'-------------------------------------------------
+	Dim iSuccess, iSecurity As Integer
+	iSecurity = 0
+	iSuccess = SetCurrentDirectory(sQueryPath)
+	if iSuccess = 0 Then
+		Note "Query folder does not exist - save cancelled"
+		Exit Sub
+	End If
+
+	'-------------------------------------------------
+	' Check the selected file name has the correct
+	' extension
+	'-------------------------------------------------
+	if UCase$(Right$(sQueryName, 3)) <> UCase$("QSF") Then
+		Note "Query file has incorrect extension - save cancelled"
+		Exit Sub
+	End If
+
+	'-------------------------------------------------
+	' Clear the query file if it already exists
+	'-------------------------------------------------
+	If FileExists(sQueryName) Then
+		Kill sQueryName
+	End If
+
+	'-------------------------------------------------
+	' Open the query file for output
+	'-------------------------------------------------
+	Open File sQueryName For Append As #5
+
+	'-------------------------------------------------
+	' Replace any CR characters with '$$' before saving
+	'-------------------------------------------------
+	Dim sFields, sWhere As String
+	sFields = StringReplace(ReadControlValue(1), chr$(10), "$$")
+	sWhere = StringReplace(ReadControlValue(2), chr$(10), "$$")
+
+	'-------------------------------------------------
+	' Save the query details to the query file
+	'-------------------------------------------------
+	Print #5, "Fields {" + sFields + "}"
+	Print #5, "Where {" + sWhere + "}"
+
+	'-------------------------------------------------
+	' Close the query file
+	'-------------------------------------------------
+	Close File #5
+
+End Sub
+
+Sub LoadQuery
+'***************************************************************
+'* Load an existing query details from a text file
+'***************************************************************
+
+	'-------------------------------------------------
+	' Prompt the user for the query file location
+	'-------------------------------------------------
+	Dim sQueryFile As String
+	sQueryFile = FileOpenDlg(sDefaultPath, "", "qsf", "Select which query to load")
+	if sQueryFile = "" then
+		Note "No query file selected - load cancelled"
+		Exit Sub
+	End If
+
+	'-------------------------------------------------
+	' Get the path and name of the selected query file
+	'-------------------------------------------------
+	Dim sQueryPath, sQueryName As String
+	sQueryPath = PathToDirectory$(sQueryFile)
+	sQueryName = PathToFileName$(sQueryFile)
+
+	'-------------------------------------------------
+	' Check the selected directory already exists
+	'-------------------------------------------------
+	Dim iSuccess, iSecurity As Integer
+	iSecurity = 0
+	iSuccess = SetCurrentDirectory(sQueryPath)
+	if iSuccess = 0 Then
+		Note "Query folder does not exist - load cancelled"
+		Exit Sub
+	End If
+
+	'-------------------------------------------------
+	' Check the selected file name has the correct
+	' extension
+	'-------------------------------------------------
+	if UCase$(Right$(sQueryName, 3)) <> UCase$("QSF") Then
+		Note "Query file has incorrect extension - load cancelled"
+		Exit Sub
+	End If
+
+	'-------------------------------------------------
+	' Check the query file exists
+	'-------------------------------------------------
+	If Not FileExists(sQueryName) Then
+		Note "Query file not found - load cancelled"
+		Exit Sub
+	End If
+
+	'-------------------------------------------------
+	' Open the query file for input
+	'-------------------------------------------------
+	Open File sQueryName For Input As #6
+
+	'-------------------------------------------------
+	' Get the first line
+	'-------------------------------------------------
+	Dim sLine As String
+	Line Input #6, sLine
+
+	'-------------------------------------------------
+	' Loop through all the lines until the file
+	' is empty
+	'-------------------------------------------------
+	Dim sFieldsText, sWhereText As String
+	Do Until EOF(6)
+
+		'-------------------------------------------------
+		' Store the line in the relevant string
+		'-------------------------------------------------
+		If UCase$(Left$(sLine, 8)) = "FIELDS {" Then
+			sFieldsText = Mid$(sLine, 9, Len(sLine) - 9)
+		End if
+
+		If UCase$(Left$(sLine, 7)) = "WHERE {" Then
+			sWhereText = Mid$(sLine, 8, Len(sLine) - 8)
+		End if
+
+		'-------------------------------------------------
+		' Get the next line
+		'-------------------------------------------------
+		Line Input #6, sLine
+
+	Loop
+
+	'-------------------------------------------------
+	' Close the query file
+	'-------------------------------------------------
+	Close File #6
+
+	'-------------------------------------------------
+	' Replace any '$$' characters with CR before loading
+	' into the form
+	'-------------------------------------------------
+	Dim sFields, sWhere As String
+	sFields = StringReplace(sFieldsText, "$$", chr$(10))
+	sWhere = StringReplace(sWhereText, "$$", chr$(10))
+
+	'-------------------------------------------------
+	' Load the query details to the form
+	'-------------------------------------------------
+	Alter Control 1 Value sFields
+	Alter Control 2 Value sWhere
+
+End Sub
+
+Sub CheckSelection
+'***************************************************************
+'* Check the user's selections and process according
+'***************************************************************
+
+	iExtractTot = 0
+
+	'-------------------------------------------------
+	' Check if the user has selected at least one table
+	' from the species table list
+	'-------------------------------------------------
+	iSppTable = ReadControlValue(3)
+	if iSppTable = 0 then
+		Note "No table has been selected!"
+		Exit Sub
+	End If
+
+	iExtractTot = 1
+
+End Sub
+
+Sub ProcessSelection
+'***************************************************************
+'* Process the table selection
+'***************************************************************
+
+	Dim sTableName As String
+	sTableName = aSQLTables(iSppTable)
+
+	Call MyPrint ("Table Name = '" + sTableName + "'")
+
+	Do Case iOutputFormat
+		Case 1
+			sOutputFormat = "tab"
+			Call MyPrint("Output Format = 'tab'")
+		Case 2
+			sOutputFormat = "shp"
+			Call MyPrint("Output Format = 'shp'")
+		Case 3
+			sOutputFormat = "csv"
+			Call MyPrint("Output Format = 'csv'")
+		Case Else
+			sOutputFormat = "tab"
+			Call MyPrint("Output Format = 'tab'")
+	End Case
+
+	'-------------------------------------------------
+	' Prompt the user for the output file destination
+	'-------------------------------------------------
+	sOutputFile = FileSaveAsDlg(sDefaultPath, "", sOutputFormat, "Select where to save the output file")
+	if sOutputFile = "" then
+		Call MyPrint("No output file selected - selection cancelled")
+		Exit Sub
+	End If
+
+	'-------------------------------------------------
+	' Get the path and name of the selected output file
+	'-------------------------------------------------
+	Dim sOutputPath, sOutputName As String
+	sOutputPath = PathToDirectory$(sOutputFile)
+	sOutputName = PathToFileName$(sOutputFile)
+
+	'-------------------------------------------------
+	' Check the selected directory already exists
+	'-------------------------------------------------
+	Dim iSuccess, iSecurity As Integer
+	iSecurity = 0
+	iSuccess = SetCurrentDirectory(sOutputPath)
+	if iSuccess = 0 Then
+		Call MyPrint("Output folder does not exist - selection cancelled")
+		Exit Sub
+	End If
+
+	'-------------------------------------------------
+	' Check the selected file name has the correct
+	' extension
+	'-------------------------------------------------
+	if UCase$(Right$(sOutputName, 3)) <> UCase$(sOutputFormat) Then
+		Call MyPrint("Output file has incorrect extension - selection cancelled")
+		Exit Sub
+	End If
+
+	Dim sShortName As String
+	sShortName = Left$(sOutputName, Len(sOutputName) - 4)
+
+	Call MyPrint("Output File = '" + sOutputFile + "'")
+
+	'-------------------------------------------------
+	' Call the subroutine to select the records from
+	' the selected table using the user's where clause
+	'-------------------------------------------------
+	Call SelectSpecies(nConn, sColumnNames, sWhereClause, sOutputPath, sShortName, sTableName)
+
+End Sub
+
+Sub SelectSpecies (ByVal nConn As Integer,
+	sColumnNames As String,
+	sWhereClause As String,
+	sOutputPath As String,
+	sOutputName As String,
+	sTableName As String)
+'*************************************************
+'* Routine to select the species records from
+'* the table name passed in the call where the
+'* attributes meet the where clause also passed
+'* in the call.
+'*************************************************
+
+	OnError Goto ErrorTrap
+
+	'-------------------------------------------------
+	' Setup the temporary and local table names
+	'-------------------------------------------------
+	Dim sTempName As String
+	sTempName = sTableName + "_temp2"
+	Call MyPrint("Selecting from table = '" + sTableName + "' ...")
+
+	'-------------------------------------------------
+	' Execute the SQL Server stored procedure to select
+	' the species records based on the where clause
+	'-------------------------------------------------
+	Dim nStmt1 As Integer
+	nStmt1 = Server_Execute(nConn, "EXECUTE dbo.usp_SelectSppSubset '" + sDefaultSchema
+	 + "', '" + sTableName + "', '" + sWhereClause + "'")
+
+	'-------------------------------------------------
+	' Close the results
+	'-------------------------------------------------
+	Server nStmt1 Close
+
+	'-------------------------------------------------
+	' Count the number of species records that have
+	' been selected in the subset temporary table
+	'-------------------------------------------------
+	Dim nStmt2 As Integer
+	Dim iRecTotal As Integer
+	Dim iRecStatus As Integer
+	nStmt2 = Server_Execute(nConn, "Select Count(*) As Records From " + sDefaultSchema + "." + sTempName)
+	Server nStmt2 Bind Column 1 To iRecTotal, iRecStatus
+	Server nStmt2 Fetch Next
+
+	'-------------------------------------------------
+	' Close the results
+	'-------------------------------------------------
+	Server nStmt2 Close
+
+	'-------------------------------------------------
+	' Check if the maximum number of records will be
+	' exceeded
+	'-------------------------------------------------
+	If iRecTotal > iRecMax Then
+		Call MyPrint("Record count exceeds maximum of " + iRecMax + " - selection cancelled.")
+		exit sub
+	End If
+
+	'-------------------------------------------------
+	' Check if any records were selected
+	'-------------------------------------------------
+	If iRecTotal = 0 Then
+		Call MyPrint("No records found - selection cancelled.")
+		exit sub
+	End If
+
+	Call MyPrint("" + iRecTotal + " records selected.")
+
+	'-------------------------------------------------
+	' Close the temporary table if already/still open
+	' in the current MapInfo session
+	'-------------------------------------------------
+	If TableIsOpen(sTempName) Then
+		Call MyPrint("Closing the temporary table ...")
+		Close Table sTempName
+	End If
+
+	'-------------------------------------------------
+	' Check if the local table is already/still open
+	' and close it if it is
+	'-------------------------------------------------
+	If TableIsOpen(sOutputName) Then
+		Call MyPrint("Closing local table ...")
+		Close Table sOutputName
+	End If
+
+	Call MyPrint("Saving into '" + sOutputName + "' ...")
+
+	'-------------------------------------------------
+	' Set up the SQL statement for extracting from
+	' the temporary table
+	'-------------------------------------------------
+	Dim sSQLStmt As String
+	sSQLStmt = "Select " + sColumnNames + " From " + sDefaultSchema + "." + sTempName
+
+	'-------------------------------------------------
+	' Link the temporary table as a local table
+	'-------------------------------------------------
+	Call MyPrint("Linking local table ...")
+	Server nConn Link Table
+	sSQLStmt
+	Toolkit "ODBC"
+	Into sOutputName
+	File sOutputPath + "\" + sOutputName
+	Autokey Off
+	ReadOnly
+
+	'-------------------------------------------------
+	' Unlink the temporary table to leave the local
+	' table as a regular standalone table
+	'-------------------------------------------------
+	Call MyPrint("Unlinking local table ...")
+	Unlink sOutputName
+
+	'-------------------------------------------------
+	' Export the table as a CSV if required
+	'-------------------------------------------------
+	If iOutputFormat = 3 Then
+		Call MyPrint("Exporting as a CSV ...")
+		Export sOutputName
+			Into sOutputPath + "\" + sOutputName + ".csv"
+			Type "CSV"
+			Titles
+			Overwrite
+	End If
+
+	'-------------------------------------------------
+	' Translate the table to ESRI shapefile if required
+	'-------------------------------------------------
+	If iOutputFormat = 2 Then
+		Dim sLogFilePath As String
+		sLogFilePath = PathToDirectory$(sLogFileName)
+
+		Call MyPrint("Log File Path = '" + sLogFilePath + "'")
+
+		Call TranslateToShapefile(sLogFilePath, sTempName, sOutputPath, sOutputName)
+	End If
+
+	'-------------------------------------------------
+	' Set the symbology if a MapInfo table is required
+	'-------------------------------------------------
+	If iOutputFormat = 1 Then
+
+		'-------------------------------------------------
+		' Check if the local table is open
+		'-------------------------------------------------
+		If TableIsOpen(sOutputName) And
+		   ColumnExists(sOutputName, "GRPRECISION") Then
+
+			'-------------------------------------------------
+			' Turn on FastEdit to speed up the updates
+			'-------------------------------------------------
+			Set Table sOutputName FastEdit On
+
+			'-------------------------------------------------
+			' Add an index to the precision field to speed
+			' up the symbology setting
+			'-------------------------------------------------
+			'Create Index On sOutputName(GRPRECISION)
+
+			'-------------------------------------------------
+			' Set the symbology for the table
+			'-------------------------------------------------
+			Call MyPrint("Setting symbology in table ...")
+
+			Dim sNodeName As String
+			sNodeName = "GiGL_Subset"
+			Call SetSymbology(sNodeName, sOutputName)
+
+			Dim sCmd As String
+			sCmd = "Commit Table " + sOutputName
+			Run Command (sCmd)
+
+		End If
+
+		'-------------------------------------------------
+		' Add the table to the top most map window (if
+		' there is one), otherwise create a new map
+		' window using the table.
+		'-------------------------------------------------
+		If NumWindows() > 0 Then
+			Add Map Layer sOutputName
+		Else
+			Map From sOutputName
+		End If
+
+		'-------------------------------------------------
+		' Close the table
+		'-------------------------------------------------
+		'Call MyPrint("Closing the MapInfo table ...")
+		'Close Table sOutputName
+
+	Else
+
+		'-------------------------------------------------
+		' If a MapInfo table is not required then
+		' check if the local table is open and drop it
+		'-------------------------------------------------
+		If TableIsOpen(sOutputName) Then
+			Call MyPrint("Dropping the MapInfo table ...")
+			Drop Table sOutputName
+		End If
+
+	End If
+
+	Exit Sub
+	
+ErrorTrap:
+	Note str$(Err()) + ": " + Error$()
+	Call MyPrint(str$(Err()) + ": " + Error$())
+	Exit Sub
+
+End Sub
+
+Sub SetSymbology(sNodeName as String, sLocalName As String)
+'***************************************************************
+'* Retrieve the symbology styles and clauses from the config file
+'* which is a XML document
+'***************************************************************
+
+	Dim bParseError As SmallInt
+	Dim hXMLDoc As MIXmlDocument
+	Dim hXMLRoot As MIXmlNode
+	Dim hXMLNode As MIXmlNode
+	Dim hXMLSpeciesTableNode As MIXmlNode
+	Dim hXMLTableNode As MIXmlNode
+	Dim hXMLSymbologyNode As MIXmlNode
+	Dim hXMLSymbolNodeList As MIXMLNodeList
+	Dim hXMLSymbolNode As MIXmlNode
+
+	OnError Goto GetSymbologyError
+
+	'-------------------------------------------------
+	' Create a document handle
+	'-------------------------------------------------
+	hXMLDoc = MIXmlDocumentCreate()
+	If hXMLDoc Then
+
+		'-------------------------------------------------
+		' Load the document into the document handle
+		'-------------------------------------------------
+		Dim iXMLLoad As SmallInt
+		iXMLLoad = MIXmlDocumentLoad(hXMLDoc, ApplicationDirectory$() + "DataSelector.xml", bParseError, FALSE, FALSE)
+		if iXMLLoad > 0 Then
+
+			'-------------------------------------------------
+			' Get a handle on the XML root node of the document
+			'-------------------------------------------------
+			hXMLRoot = MIXmlDocumentGetRootNode(hXMLDoc)
+			If hXMLRoot Then
+
+				'-------------------------------------------------
+				' Get a handle on the DataExtractor node
+				'-------------------------------------------------
+				hXMLNode = MIXmlSelectSingleNode(hXMLRoot, "DataSelector")
+	          If hXMLNode Then
+	
+					'-------------------------------------------------
+					' Get a handle on the SpeciesTables node
+					'-------------------------------------------------
+					hXMLSpeciesTableNode = MIXmlSelectSingleNode(hXMLNode, "SpeciesTables")
+
+					'-------------------------------------------------
+					' Get a handle on the current species table node
+					'-------------------------------------------------
+					hXMLTableNode = MIXmlSelectSingleNode(hXMLSpeciesTableNode, sNodeName)
+
+					'-------------------------------------------------
+					' Get a handle on the symbology node for the table
+					'-------------------------------------------------
+					hXMLSymbologyNode = MIXmlSelectSingleNode(hXMLTableNode, "Symbology")
+
+					'-------------------------------------------------
+					' Get a handle on the node map of the above node
+					'-------------------------------------------------
+					hXMLSymbolNodeList = MIXMLGetChildList(hXMLSymbologyNode)
+
+					'-------------------------------------------------
+					' Get a handle on the first attribute in the node list
+					'-------------------------------------------------
+					hXMLSymbolNode = MIXMLGetNextNode(hXMLSymbolNodeList)
+
+					'-------------------------------------------------
+					' Loop through all the attributes in the node list
+					' applying the style using the SQL clauses
+					'-------------------------------------------------
+					Dim i As Integer
+					i = 0
+					Do while hXMLSymbolNode
+						
+						i = i + 1
+						' SQL clause used to retrieve the required rows from the species table
+						Dim sClause As String
+						sClause = GetSingleNodeValue(hXMLSymbolNode, "Clause")
+
+						' Type of object
+						Dim sObject As String
+						sObject = GetSingleNodeValue(hXMLSymbolNode, "Object")
+
+						' Type of style
+						Dim sType As String
+						sType = GetSingleNodeValue(hXMLSymbolNode, "Type")
+
+						' Style of the symbol
+						Dim sStyle As String
+						sStyle = GetSingleNodeValue(hXMLSymbolNode, "Style")
+
+						'-------------------------------------------------
+						' Close the temporary NewStyle table if it is
+						' already/still open in the current MapInfo session
+						'-------------------------------------------------
+						If TableIsOpen("NewStyle") Then
+							Close Table NewStyle
+						End If
+
+						'-------------------------------------------------
+						' Select all the rows of the desired object type
+						' matching the required SQL clause
+						'-------------------------------------------------
+						Dim sCmd As String
+						sCmd = "Select * From " + sLocalName + " Where Str$(obj) = """ + sObject + """ And " + sClause + " Into NewStyle"
+						Run Command (sCmd)
+
+						'-------------------------------------------------
+						' Count the number of rows selected
+						'-------------------------------------------------
+						Dim iRows As Integer
+						iRows = TableInfo(NewStyle, TAB_INFO_NROWS)
+
+						Call MyPrint("Setting " + sObject + " " + sType + " style for " + iRows + " rows where " + sClause)
+
+						'-------------------------------------------------
+						' If any rows were selected then set the styles
+						'-------------------------------------------------
+						If iRows > 0 Then
+
+							'-------------------------------------------------
+							' Fetch the first of the selected rows
+							'-------------------------------------------------
+							Fetch First from NewStyle
+
+							'-------------------------------------------------
+							' Loop through all the selected rows setting the
+							' symbology style
+							'-------------------------------------------------
+							Dim x as Integer
+							x = 1
+								Do while x <= iRows
+								'-------------------------------------------------
+
+								' Set the current object to update
+								'-------------------------------------------------
+								Dim oUpdateObj as Object
+								oUpdateObj = NewStyle.obj
+
+								Dim stlSymbol As Symbol
+								Dim stlPen As Pen
+								Dim stlBrush As Brush
+
+								'-------------------------------------------------
+								' Alter the object style depending on the object
+								' type and style type
+								'-------------------------------------------------
+								Do Case sObject
+									Case "Point"
+										If sType = "Symbol" Then
+											stlSymbol = STLText2Symbol(sStyle)
+											Alter Object oUpdateObj Info OBJ_INFO_SYMBOL, stlSymbol
+										End If
+									Case "Region"
+										If sType = "Pen" Then
+											stlPen = STLText2Pen(sStyle)
+											Alter Object oUpdateObj Info OBJ_INFO_PEN, stlPen
+										End If
+										If sType = "Brush" Then
+											stlBrush = STLText2Brush(sStyle)
+											Alter Object oUpdateObj Info OBJ_INFO_BRUSH, stlBrush
+										End If
+									Case Else
+								End Case
+
+								Update NewStyle Set Obj = oUpdateObj Where RowID = x
+
+								'-------------------------------------------------
+								' Fetch the next of the selected rows
+								'-------------------------------------------------
+								Fetch next from NewStyle
+								x = x + 1
+
+							Loop
+
+						End If
+
+						'-------------------------------------------------
+						' Get a handle on the next attribute in the node list
+						'-------------------------------------------------
+						hXMLSymbolNode = MIXMLGetNextNode(hXMLSymbolNodeList)
+
+					Loop
+
+				End If
+
+			End If
+
+		Else
+
+			Note "Error : " + MIGetErrorMessage()
+
+		End If
+
+	End If
+
+CleanUp:
+	'-------------------------------------------------
+	' Destroy the handles
+	'-------------------------------------------------
+	If hXMLSymbolNode Then Call MIXmlNodeDestroy(hXMLSymbolNode) End If
+	If hXMLSymbolNodeList Then Call MIXmlNodeListDestroy(hXMLSymbolNodeList) End If
+	If hXMLSymbologyNode Then Call MIXmlNodeDestroy(hXMLSymbologyNode) End If
+	If hXMLTableNode Then Call MIXmlNodeDestroy(hXMLTableNode) End If
+
+	If hXMLSpeciesTableNode Then Call MIXmlNodeDestroy(hXMLSpeciesTableNode) End If
+	If hXMLNode Then Call MIXmlNodeDestroy(hXMLNode) End If
+	If hXMLRoot Then Call MIXmlNodeDestroy(hXMLRoot) End If
+	If hXMLDoc Then Call MIXmlDocumentDestroy(hXMLDoc) End If
+
+	'-------------------------------------------------
+	' Close the temporary NewStyle table if it is
+	' already/still open in the current MapInfo session
+	'-------------------------------------------------
+	If TableIsOpen("NewStyle") Then
+		Close Table NewStyle
+	End If
+
+	Exit Sub
+
+GetSymbologyError:
+	Note str$(Err()) + ": " + Error$()
+	Goto CleanUp
+	Exit Sub
+
+End Sub
+
+Sub AboutBox
+'***************************************************************
+'* Display the 'About' dialog box
+'***************************************************************
+
+	Dialog
+		Title "About Data Selector 1.00"
+		Width 230
+		Height 115
+
+	Control StaticText
+		Title "This program will select GiGL species records from SQL"
+		Position 10,10
+	Control StaticText
+		Title "Server based on the SQL where clause entered by the user"
+		Position 10,20
+	Control StaticText
+		Title "and will create a local MapInfo .Tab file, ESRI .Shp file"
+		Position 10,30
+	Control StaticText
+		Title "or Comma-Separated .CSV file."
+		Position 10,40
+	Control StaticText
+		Title "Created by Andy Foy Consulting."
+		Position 10,60
+	Control StaticText
+		Title "Copyright© 2015 Greenspace Information for Greater London."
+		Position 10,70
+	Control OKButton
+		Position 185,95
+
+End Sub
+
+Sub MyPrint(ByVal sMsg As String)
+'***************************************************************
+'* Bespoke print function
+'***************************************************************
+
+	'-------------------------------------------------
+	' Open the log file for output
+	'-------------------------------------------------
+	Open File sLogFileName For Append As #1
+
+	'-------------------------------------------------
+	' Write the message passed to the output file
+	'-------------------------------------------------
+	Print #1, FormatDate$(CurDate()) + " " + FormatTime$(CurTime(),"H:mm:ss") + " : " + sMsg
+
+	'-------------------------------------------------
+	' Close the output file
+	'-------------------------------------------------
+	Close File #1
+
+End Sub
+
+Sub PrintLogFile()
+'***************************************************************
+'* Print the log file to the message window
+'***************************************************************
+
+	'-------------------------------------------------
+	' Open the log file for input
+	'-------------------------------------------------
+	Open File sLogFileName For Input As #99
+
+	'-------------------------------------------------
+	' Get the first line
+	'-------------------------------------------------
+	Dim sMsg As String
+	Line Input #99, sMsg
+
+	'-------------------------------------------------
+	' Loop through all the lines until the log file
+	' is empty
+	'-------------------------------------------------
+	Do Until EOF(99)
+		'-------------------------------------------------
+		' Print the log file line to the message window
+		'-------------------------------------------------
+		Print sMsg
+
+		'-------------------------------------------------
+		' Get the next line
+		'-------------------------------------------------
+		Line Input #99, sMsg
+	Loop
+
+	'-------------------------------------------------
+	' Refresh the message window
+	'-------------------------------------------------
+	Update Window WIN_MESSAGE
+
+	'-------------------------------------------------
+	' Close the log file
+	'-------------------------------------------------
+	Close File #99
+
+End Sub
+
+Sub egsit
+'***************************************************************
+'* Exit the program
+'***************************************************************
+
+	End Program
+
+End Sub

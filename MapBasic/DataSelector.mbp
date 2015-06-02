@@ -1,0 +1,6 @@
+[Link]
+Application=DataSelector.mbx
+Module=DataSelector.mbo
+Module=GenFunctions.mbo
+Module=TranslateToSHP.mbo
+Module=XMLFunctions.mbo

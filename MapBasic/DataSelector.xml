@@ -1,0 +1,185 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<!--
+WARNING: This file should be changed carefully and a backup should be
+taken before any changes so that they can be backed out.  Changed lines
+can also be commented out as below.
+-->
+
+<!--
+This config file contains all the variables used by the DataSelector
+MapBasic tool.
+
+The 'configuration' node is the 'root' node and signifies the start of the
+contents of the configuration file.
+
+The 'DataSelector' node contains all of the entries relating to the
+MapBasic tool variables.
+
+Each entry relates to a file, folder, table name, column name or SQL statement
+used by the MapBasic tool to select and export species data for use in GIS or
+as a spreadsheet.
+-->
+
+<configuration>
+<DataSelector>
+
+  <!-- The name of the log file used by the tool to output messages -->
+  <LogFileName>
+	<value>D:\Andy\GiGL\Data Selector\Extracts\DataSelector.log</value>
+  </LogFileName>
+
+  <!-- The location of the File DSN that specifies which SQL Server database to connect to -->
+  <FileDSN>
+	<value>D:\Andy\GiGL\Data Selector\SQL Server\NBNData.dsn</value>
+  </FileDSN>
+
+  <!-- The existing file location under which all extracts will be created -->
+  <DefaultPath>
+	<value>D:\Andy\GiGL\Data Selector\Extracts</value>
+  </DefaultPath>
+
+  <!-- The default format of the output files to be created -->
+  <DefaultFormat>
+	<value>tab</value>
+  </DefaultFormat>
+
+  <!-- The schema used in the SQL Server database -->
+  <DatabaseSchema>
+	<value>dbo</value>
+  </DatabaseSchema>
+
+  <!-- The SQL statement used to list all the species tables in SQL Server that can be selected
+       by the user to extract from -->
+  <TableListSQL>
+	<value>Select table_name From information_schema.tables Where table_name Like 'GiGL_SPP%' And table_name Not Like '%_temp%' Order By table_name</value>
+  </TableListSQL>
+
+  <!-- The maximum number of records what will be extracted in any one extract -->
+  <RecMax>
+	<value>1000000</value>
+  </RecMax>
+
+  <!-- The table columns and SQL where clauses used to select all the required columns for
+	the species extract tables -->
+  <SpeciesTables>
+	<GiGL_Subset>
+		<Symbology>
+			<Symbol>
+				<Clause>
+					<Value>GRPRECISION = 100</Value>
+				</Clause>
+				<Object>
+					<Value>Point</Value>
+				</Object>
+				<Type>
+					<Value>Symbol</Value>
+				</Type>
+				<Style>
+					<Value>2,64,255,14,MapInfo Dispersed Group,0,0</Value>
+				</Style>
+			</Symbol>
+			<Symbol>
+				<Clause>
+					<Value>GRPRECISION &lt;= 10</Value>
+				</Clause>
+				<Object>
+					<Value>Point</Value>
+				</Object>
+				<Type>
+					<Value>Symbol</Value>
+				</Type>
+				<Style>
+					<Value>2,65,255,12,MapInfo Dispersed Group,0,0</Value>
+				</Style>
+			</Symbol>
+			<Symbol>
+				<Clause>
+					<Value>GRPRECISION = 1000</Value>
+				</Clause>
+				<Object>
+					<Value>Region</Value>
+				</Object>
+				<Type>
+					<Value>Pen</Value>
+				</Type>
+				<Style>
+					<Value>2,2,10526880</Value>
+				</Style>
+			</Symbol>
+			<Symbol>
+				<Clause>
+					<Value>GRPRECISION = 1000</Value>
+				</Clause>
+				<Object>
+					<Value>Region</Value>
+				</Object>
+				<Type>
+					<Value>Brush</Value>
+				</Type>
+				<Style>
+					<Value>5,10526880</Value>
+				</Style>
+			</Symbol>
+			<Symbol>
+				<Clause>
+					<Value>GRPRECISION = 2000</Value>
+				</Clause>
+				<Object>
+					<Value>Region</Value>
+				</Object>
+				<Type>
+					<Value>Pen</Value>
+				</Type>
+				<Style>
+					<Value>2,2,10526880</Value>
+				</Style>
+			</Symbol>
+			<Symbol>
+				<Clause>
+					<Value>GRPRECISION = 2000</Value>
+				</Clause>
+				<Object>
+					<Value>Region</Value>
+				</Object>
+				<Type>
+					<Value>Brush</Value>
+				</Type>
+				<Style>
+					<Value>6,10526880</Value>
+				</Style>
+			</Symbol>
+			<Symbol>
+				<Clause>
+					<Value>GRPRECISION = 10000</Value>
+				</Clause>
+				<Object>
+					<Value>Region</Value>
+				</Object>
+				<Type>
+					<Value>Pen</Value>
+				</Type>
+				<Style>
+					<Value>2,2,10526880</Value>
+				</Style>
+			</Symbol>
+			<Symbol>
+				<Clause>
+					<Value>GRPRECISION = 10000</Value>
+				</Clause>
+				<Object>
+					<Value>Region</Value>
+				</Object>
+				<Type>
+					<Value>Brush</Value>
+				</Type>
+				<Style>
+					<Value>1,10526880</Value>
+				</Style>
+			</Symbol>
+		</Symbology>
+	</GiGL_Subset>
+  </SpeciesTables>
+
+</DataSelector>
+</configuration>
