@@ -62,7 +62,7 @@ Function TableIsOpen (ByVal sTabName As String) As Logical
 
 End Function
 
-Function ColumnExists(ByVal sTableName As String, ByVal mColName As String) As Logical
+Function ColumnExists(ByVal sTableName As String, ByVal sColName As String) As Logical
 '*************************************************
 '* Check if the column exists in the table
 '*************************************************
@@ -72,14 +72,14 @@ Function ColumnExists(ByVal sTableName As String, ByVal mColName As String) As L
 	' required name
 	'-------------------------------------------------
 	Dim i, j As Integer
-	Dim mColName0 As String
+	Dim sColName0 As String
 
 	ColumnExists = False
 
 	For i = 1 to TableInfo(sTableName, TAB_INFO_NCOLS)
  
-       mColName0 = ColumnInfo(sTableName, "col"&i, COL_INFO_NAME)
-		If mColName = mColName0 Then
+       sColName0 = ColumnInfo(sTableName, "col"&i, COL_INFO_NAME)
+		If UCase$(sColName) = UCase$(sColName0) Then
  			ColumnExists = True
 			Exit For
 		End If
@@ -259,7 +259,9 @@ Exit Function
 
 '-------------------------
 ErrorOccured:
+
 End Function
+
 
 
 
