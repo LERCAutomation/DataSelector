@@ -62,7 +62,7 @@ Function TableIsOpen (ByVal sTabName As String) As Logical
 
 End Function
 
-Function ColumnExists(ByVal mTableName As String, ByVal mColName As String) As Logical
+Function ColumnExists(ByVal sTableName As String, ByVal mColName As String) As Logical
 '*************************************************
 '* Check if the column exists in the table
 '*************************************************
@@ -76,9 +76,9 @@ Function ColumnExists(ByVal mTableName As String, ByVal mColName As String) As L
 
 	ColumnExists = False
 
-	For i = 1 to TableInfo(mTableName, TAB_INFO_NCOLS)
+	For i = 1 to TableInfo(sTableName, TAB_INFO_NCOLS)
  
-       mColName0 = ColumnInfo(mTableName, "col"&i, COL_INFO_NAME)
+       mColName0 = ColumnInfo(sTableName, "col"&i, COL_INFO_NAME)
 		If mColName = mColName0 Then
  			ColumnExists = True
 			Exit For
@@ -259,4 +259,53 @@ Exit Function
 
 '-------------------------
 ErrorOccured:
+End Function
+
+
+
+Function GetRowLength(ByVal sTableName As String) As Integer
+'*************************************************
+'* Calculate the total row length for a table
+'*************************************************
+
+	'-------------------------------------------------
+	' Loop through all the columns in the table and
+	' sum the column lengths
+	'-------------------------------------------------
+	Dim i As Integer
+	Dim iRowLength As Integer
+	Dim iColumnType As SmallInt
+	iRowLength = 1
+
+	For i = 1 to TableInfo(sTableName, TAB_INFO_NCOLS)
+ 
+       iColumnType = ColumnInfo(sTableName, "col"&i, COL_INFO_TYPE)
+
+		Do Case iColumnType
+			Case 1
+				iRowLength = iRowLength + ColumnInfo(sTableName, "col"&i, COL_INFO_WIDTH)
+			Case 2
+				iRowLength = iRowLength + ColumnInfo(sTableName, "col"&i, COL_INFO_WIDTH)
+			Case 3
+				iRowLength = iRowLength + 4
+			Case 4
+				iRowLength = iRowLength + 2
+			Case 5
+				iRowLength = iRowLength + 4
+			Case 6
+				iRowLength = iRowLength + 1
+			Case 8
+				iRowLength = iRowLength + 8
+			Case 37
+				iRowLength = iRowLength + 4
+			Case 38
+				iRowLength = iRowLength + 8
+			Case Else
+				Call MyPrint("Column type " + iColumnType + " unrecognised.  Column length unknown")
+		End Case
+
+	Next
+
+	GetRowLength = iRowLength
+
 End Function
