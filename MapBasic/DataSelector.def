@@ -121,6 +121,8 @@ Declare Sub MIXmlAttributeListDestroy Lib MIXML_LIB_NAME Alias "MIXmlAttributeLi
 '-------------------------------------------------
 Declare Function TableIsOpen
 	(ByVal sTabName As String) As Logical
+Declare Function TabFileIsOpen
+	(ByVal sTabFileName As String) As String
 Declare Function ColumnExists
 	(ByVal sTableName As String,
 	ByVal sColName As String) As Logical
@@ -229,7 +231,8 @@ Declare Function MIGetErrorCode Lib MIWEBSERVICES_LIB_NAME
 '-------------------------------------------------
 ' Declare the global variables
 '-------------------------------------------------
-Global sDefaultPath As String
+Global sDefaultExtractPath As String
+Global sDefaultQueryPath As String
 Global sDefaultFormat As String
 Global sFileDSN As String
 Global sDefaultSchema As String

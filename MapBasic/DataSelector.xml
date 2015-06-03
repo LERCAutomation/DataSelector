@@ -34,10 +34,15 @@ as a spreadsheet.
 	<value>D:\Andy\GiGL\Data Selector\SQL Server\NBNData.dsn</value>
   </FileDSN>
 
-  <!-- The existing file location under which all extracts will be created -->
-  <DefaultPath>
+  <!-- The existing file location where extracts will be saved by default -->
+  <DefaultExtractPath>
 	<value>D:\Andy\GiGL\Data Selector\Extracts</value>
-  </DefaultPath>
+  </DefaultExtractPath>
+
+  <!-- The existing file location where queries will be saved and loaded by default -->
+  <DefaultQueryPath>
+	<value>D:\Andy\GiGL\Data Selector\Queries</value>
+  </DefaultQueryPath>
 
   <!-- The default format of the output files to be created -->
   <DefaultFormat>

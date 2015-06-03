@@ -30,7 +30,7 @@
 '***************************************************************
 Include "DataSelector.def"
 
-Function TableIsOpen (ByVal sTabName As String) As Logical
+Function TableIsOpen(ByVal sTabName As String) As Logical
 '*************************************************
 '* Check if the table is open
 '*************************************************
@@ -56,6 +56,38 @@ Function TableIsOpen (ByVal sTabName As String) As Logical
 	For iCounter = 1 to iNumberOfTables
 		If TableInfo(iCounter, TAB_INFO_NAME) = sTabName Then
 			TableIsOpen = TRUE
+			Exit Function
+		End If
+	Next
+
+End Function
+
+Function TabFileIsOpen(ByVal sTabFileName As String) As String
+'*************************************************
+'* Check if the tab file is open
+'*************************************************
+
+	'-------------------------------------------------
+	' Determine the number of open tables
+	'-------------------------------------------------
+	Dim iCounter, iNumberOfTables As Integer
+	iNumberOfTables = NumTables()
+
+	'-------------------------------------------------
+	' Return FALSE if there are no open tables
+	'-------------------------------------------------
+	If iNumberOfTables = 0 Then
+		TabFileIsOpen = ""
+		Exit Function
+	End If
+
+	'-------------------------------------------------
+	' Loop through the open tables looking for the
+	' require tab file name. If found return TRUE
+	'-------------------------------------------------
+	For iCounter = 1 to iNumberOfTables
+		If TableInfo(iCounter, TAB_INFO_TABFILE) = sTabFileName Then
+			TabFileIsOpen = TableInfo(iCounter, TAB_INFO_NAME)
 			Exit Function
 		End If
 	Next
@@ -259,6 +291,7 @@ Exit Function
 
 '-------------------------
 ErrorOccured:
+
 
 End Function
 

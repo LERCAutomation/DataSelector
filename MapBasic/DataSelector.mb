@@ -109,8 +109,11 @@ Sub GetDefaultValues
 					' File DSN path and name containing remote SQL database connection settings
 					sFileDSN = GetSingleNodeValue(hXMLNode, "FileDSN")
 
-					' Default file path to store extracts in sub-folders
-					sDefaultPath = GetSingleNodeValue(hXMLNode, "DefaultPath")
+					' Default file path to store extracts
+					sDefaultExtractPath = GetSingleNodeValue(hXMLNode, "DefaultExtractPath")
+
+					' Default file path to save/load queries
+					sDefaultQueryPath = GetSingleNodeValue(hXMLNode, "DefaultQueryPath")
 
 					' Default database schema to use in the remote SQL database
 					sDefaultSchema = GetSingleNodeValue(hXMLNode, "DatabaseSchema")
@@ -192,7 +195,7 @@ Sub OpenDialog
 	Control EditText
 		ID 1
 		Position 10,20
-		Height 60
+		Height 80
 		Width 170
 		Into sColumnNames
 
@@ -201,11 +204,11 @@ Sub OpenDialog
 	'-------------------------------------------------
 	Control StaticText
 		Title "Where Clause:"
-		Position 10,90
+		Position 10,110
 	Control EditText
 		ID 2
-		Position 10,100
-		Height 90
+		Position 10,120
+		Height 70
 		Width 170
 		Into sWhereClause
 
@@ -467,7 +470,7 @@ Sub SaveQuery
 	' Prompt the user for the query file destination
 	'-------------------------------------------------
 	Dim sQueryFile As String
-	sQueryFile = FileSaveAsDlg(sDefaultPath, "", "qsf", "Select where to save the query")
+	sQueryFile = FileSaveAsDlg(sDefaultQueryPath, "", "qsf", "Select where to save the query")
 	if sQueryFile = "" then
 		Note "No query file selected - save cancelled"
 		Exit Sub
@@ -541,7 +544,7 @@ Sub LoadQuery
 	' Prompt the user for the query file location
 	'-------------------------------------------------
 	Dim sQueryFile As String
-	sQueryFile = FileOpenDlg(sDefaultPath, "", "qsf", "Select which query to load")
+	sQueryFile = FileOpenDlg(sDefaultQueryPath, "", "qsf", "Select which query to load")
 	if sQueryFile = "" then
 		Note "No query file selected - load cancelled"
 		Exit Sub
@@ -708,9 +711,10 @@ Sub ProcessSelection
 	'-------------------------------------------------
 	' Prompt the user for the output file destination
 	'-------------------------------------------------
-	sOutputFile = FileSaveAsDlg(sDefaultPath, "", sOutputFormat, "Select where to save the output file")
+	sOutputFile = FileSaveAsDlg(sDefaultExtractPath, "", sOutputFormat, "Select where to save the output file")
 	if sOutputFile = "" then
 		Call MyPrint("No output file selected - selection cancelled")
+		Note "No output file selected - selection cancelled"
 		Exit Sub
 	End If
 
@@ -729,6 +733,7 @@ Sub ProcessSelection
 	iSuccess = SetCurrentDirectory(sOutputPath)
 	if iSuccess = 0 Then
 		Call MyPrint("Output folder does not exist - selection cancelled")
+		Note "Output folder does not exist - selection cancelled"
 		Exit Sub
 	End If
 
@@ -738,6 +743,7 @@ Sub ProcessSelection
 	'-------------------------------------------------
 	if UCase$(Right$(sOutputName, 3)) <> UCase$(sOutputFormat) Then
 		Call MyPrint("Output file has incorrect extension - selection cancelled")
+		Note "Output file has incorrect extension - selection cancelled"
 		Exit Sub
 	End If
 
@@ -780,6 +786,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	' Execute the SQL Server stored procedure to select
 	' the species records based on the where clause
 	'-------------------------------------------------
+	sWhereClause = StringReplace(sWhereClause, "'", "''")
 	Dim nStmt1 As Integer
 	nStmt1 = Server_Execute(nConn, "EXECUTE dbo.usp_SelectSppSubset '" + sDefaultSchema
 	 + "', '" + sTableName + "', '" + sWhereClause + "'")
@@ -811,7 +818,8 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	'-------------------------------------------------
 	If iRecTotal > iRecMax Then
 		Call MyPrint("Record count exceeds maximum of " + iRecMax + " - selection cancelled.")
-		exit sub
+		Note "Record count exceeds maximum of " + iRecMax + " - selection cancelled."
+		Exit Sub
 	End If
 
 	'-------------------------------------------------
@@ -819,7 +827,8 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	'-------------------------------------------------
 	If iRecTotal = 0 Then
 		Call MyPrint("No records found - selection cancelled.")
-		exit sub
+		Note "No records found - selection cancelled."
+		Exit Sub
 	End If
 
 	Call MyPrint("" + iRecTotal + " records selected.")
@@ -837,50 +846,66 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	' Check if the local table is already/still open
 	' and close it if it is
 	'-------------------------------------------------
-	If TableIsOpen(sOutputName) Then
+	Dim sOpenTableName As String
+	sOpenTableName = TabFileIsOpen(sOutputPath + sOutputName + ".TAB")
+	If sOpenTableName <> "" Then
 		Call MyPrint("Closing local table ...")
-		Close Table sOutputName
+		Close Table sOpenTableName
 	End If
+
+	'-------------------------------------------------
+	' Replace any spaces in the table name with
+	' underscores
+	'-------------------------------------------------
+	Dim sIntoName As String
+	sIntoName = StringReplace(sOutputName, " ", "_")
 
 	Call MyPrint("Saving into '" + sOutputName + "' ...")
 
 	'-------------------------------------------------
-	' Set up the SQL statement for extracting from
-	' the temporary table
+	' Set up the SQL statement for creating an empty
+	' temporary table (to check the record length)
 	'-------------------------------------------------
 	Dim sSQLStmt As String
-	sSQLStmt = "Select " + sColumnNames + " From " + sDefaultSchema + "." + sTempName
+	sSQLStmt = "Select " + sColumnNames + " From " + sDefaultSchema + "." + sTempName + " WHERE GRPRECISION = -1"
 
 	'-------------------------------------------------
 	' Link the temporary table as a local table
 	'-------------------------------------------------
-	Call MyPrint("Linking local table ...")
+	Call MyPrint("Linking dummy table ...")
 	Server nConn Link Table
 	sSQLStmt
 	Toolkit "ODBC"
-	Into sOutputName
-	File sOutputPath + "\" + sOutputName
+	Into sIntoName
+	File sOutputPath + sOutputName
 	Autokey Off
 	ReadOnly
+
+	'-------------------------------------------------
+	' Get the table name alias of the new table
+	'-------------------------------------------------
+	Dim sTableAlias As String
+	sTableAlias = TableInfo(0, TAB_INFO_NAME)
 
 	'-------------------------------------------------
 	' Check if the maximum record length will be exceeded
 	'-------------------------------------------------
 	Dim iRowLength As Integer
-	iRowLength = GetRowLength(sOutputName)
+	iRowLength = GetRowLength(sTableAlias)
 	If iRowLength > 4096 Then
 
 		Call MyPrint("Record length exceeds maximum of 4096 bytes - selection cancelled.")
+		Note "Record length exceeds maximum of 4096 bytes - selection cancelled."
 
 		'-------------------------------------------------
 		' Drop the local table
 		'-------------------------------------------------
-		If TableIsOpen(sOutputName) Then
+		If TableIsOpen(sTableAlias) Then
 			Call MyPrint("Dropping local table ...")
-			Drop Table sOutputName
+			Drop Table sTableAlias
 		End If
 
-		exit sub
+		Exit Sub
 
 	Else
 		Call MyPrint("Total record length = " + iRowLength + " bytes")
@@ -895,16 +920,17 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	If iDataSize > (1024*1024) Then
 
 		Call MyPrint("Total data size exceeds maximum of 2 Gb - selection cancelled.")
+		Note "Total data size exceeds maximum of 2 Gb - selection cancelled."
 
 		'-------------------------------------------------
 		' Drop the local table
 		'-------------------------------------------------
-		If TableIsOpen(sOutputName) Then
+		If TableIsOpen(sTableAlias) Then
 			Call MyPrint("Dropping local table ...")
-			Drop Table sOutputName
+			Drop Table sTableAlias
 		End If
 
-		exit sub
+		Exit Sub
 
 	Else
 		Call MyPrint("Total data size = " + iDataSize + " Kb")
@@ -914,16 +940,50 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	' Unlink the temporary table to leave the local
 	' table as a regular standalone table
 	'-------------------------------------------------
+	Call MyPrint("Unlinking dummy table ...")
+	Unlink sTableAlias
+
+	'-------------------------------------------------
+	' Close the dummy table
+	'-------------------------------------------------
+	If TableIsOpen(sTableAlias) Then
+		Call MyPrint("Closing the dummy table ...")
+		Close Table sTableAlias
+	End If
+
+	sSQLStmt = "Select " + sColumnNames + " From " + sDefaultSchema + "." + sTempName
+
+	'-------------------------------------------------
+	' Link the temporary table as a local table
+	'-------------------------------------------------
+	Call MyPrint("Linking local table ...")
+	Server nConn Link Table
+	sSQLStmt
+	Toolkit "ODBC"
+	Into sIntoName
+	File sOutputPath + sOutputName
+	Autokey Off
+	ReadOnly
+
+	'-------------------------------------------------
+	' Get the table name alias of the new table
+	'-------------------------------------------------
+	sTableAlias = TableInfo(0, TAB_INFO_NAME)
+
+	'-------------------------------------------------
+	' Unlink the temporary table to leave the local
+	' table as a regular standalone table
+	'-------------------------------------------------
 	Call MyPrint("Unlinking local table ...")
-	Unlink sOutputName
+	Unlink sTableAlias
 
 	'-------------------------------------------------
 	' Export the table as a CSV if required
 	'-------------------------------------------------
 	If iOutputFormat = 3 Then
 		Call MyPrint("Exporting as a CSV ...")
-		Export sOutputName
-			Into sOutputPath + "\" + sOutputName + ".csv"
+		Export sTableAlias
+			Into sOutputPath + sOutputName + ".csv"
 			Type "CSV"
 			Titles
 			Overwrite
@@ -950,24 +1010,24 @@ Sub SelectSpecies (ByVal nConn As Integer,
 		' If the symbology is to be set and the table is
 		' open
 		'-------------------------------------------------
-		If bSetSymbology = TRUE AND TableIsOpen(sOutputName) Then
+		If bSetSymbology = TRUE AND TableIsOpen(sTableAlias) Then
 
 			'-------------------------------------------------
 			' If the local table contains the GRPRECISION
 			' column (which the symbology is based on)
 			'-------------------------------------------------
-			If ColumnExists(sOutputName, "GRPRECISION") Then
+			If ColumnExists(sTableAlias, "GRPRECISION") Then
 
 				'-------------------------------------------------
 				' Add an index to the precision field to speed
 				' up the symbology setting
 				'-------------------------------------------------
-				'Create Index On sOutputName(GRPRECISION)
+				'Create Index On sTableAlias(GRPRECISION)
 
 				'-------------------------------------------------
 				' Turn on FastEdit to speed up the updates
 				'-------------------------------------------------
-				Set Table sOutputName FastEdit On
+				Set Table sTableAlias FastEdit On
 
 				'-------------------------------------------------
 				' Set the symbology for the table
@@ -976,12 +1036,12 @@ Sub SelectSpecies (ByVal nConn As Integer,
 
 				Dim sNodeName As String
 				sNodeName = "GiGL_Subset"
-				Call SetSymbology(sNodeName, sOutputName)
+				Call SetSymbology(sNodeName, sTableAlias)
 
 				'-------------------------------------------------
 				' Turn off FastEdit after updates
 				'-------------------------------------------------
-				Set Table sOutputName FastEdit Off
+				Set Table sTableAlias FastEdit Off
 
 			Else
 
@@ -995,7 +1055,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 		' Check if the local table is mappable (i.e.
 		' contains the 'OBJ' graphics column)
 		'-------------------------------------------------
-		If TableInfo(sOutputName, TAB_INFO_MAPPABLE) Then
+		If TableInfo(sTableAlias, TAB_INFO_MAPPABLE) Then
 
 	 		'-------------------------------------------------
 			' Add the table to the top most map window (if
@@ -1003,9 +1063,9 @@ Sub SelectSpecies (ByVal nConn As Integer,
 			' window using the table.
 			'-------------------------------------------------
 			If NumWindows() > 0 Then
-				Add Map Layer sOutputName
+				Add Map Layer sTableAlias
 			Else
-				Map From sOutputName
+				Map From sTableAlias
 			End If
 
 		Else
@@ -1019,7 +1079,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 		' Close the table
 		'-------------------------------------------------
 		'Call MyPrint("Closing the MapInfo table ...")
-		'Close Table sOutputName
+		'Close Table sTableAlias
 
 	Else
 
@@ -1027,9 +1087,9 @@ Sub SelectSpecies (ByVal nConn As Integer,
 		' If a MapInfo table is not required then
 		' check if the local table is open and drop it
 		'-------------------------------------------------
-		If TableIsOpen(sOutputName) Then
+		If TableIsOpen(sTableAlias) Then
 			Call MyPrint("Dropping the MapInfo table ...")
-			Drop Table sOutputName
+			Drop Table sTableAlias
 		End If
 
 	End If
@@ -1288,6 +1348,9 @@ CleanUp:
 		Close Table Selection
 	End If
 
+	'-------------------------------------------------
+	' Unselect all records
+	'-------------------------------------------------
 	Run Menu command M_QUERY_UNSELECT
 
 	Exit Sub
