@@ -57,8 +57,13 @@ as a spreadsheet.
 
   <!-- The maximum number of records what will be extracted in any one extract -->
   <RecMax>
-	<value>1000000</value>
+	<value>10000000</value>
   </RecMax>
+
+  <!-- The default for whether the symbology should be set for .tab files or not -->
+  <DefaultSetSymbology>
+	<value>YES</value>
+  </DefaultSetSymbology>
 
   <!-- The table columns and SQL where clauses used to select all the required columns for
 	the species extract tables -->

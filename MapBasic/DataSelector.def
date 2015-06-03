@@ -78,6 +78,7 @@ Declare Sub DialogSetup
 Declare Sub SaveQuery
 Declare Sub LoadQuery
 Declare Sub CheckSelection
+Declare Sub SetFileFormat
 Declare Sub SelectSpecies
 	(ByVal nConn As Integer,
 	sColumnNames As String,
@@ -121,8 +122,10 @@ Declare Sub MIXmlAttributeListDestroy Lib MIXML_LIB_NAME Alias "MIXmlAttributeLi
 Declare Function TableIsOpen
 	(ByVal sTabName As String) As Logical
 Declare Function ColumnExists
-	(ByVal mTableName As String,
-	ByVal mColName As String) As Logical
+	(ByVal sTableName As String,
+	ByVal sColName As String) As Logical
+Declare Function GetRowLength
+	(ByVal sTableName As String) As Integer
 Declare Function ExecuteAndWait
 	(ByVal cmdLine as string) As Integer
 Declare Function GetSingleNodeValue(
@@ -232,6 +235,7 @@ Global sFileDSN As String
 Global sDefaultSchema As String
 Global sTableListSQL As String
 Global sLogFileName As String
+Global sDefaultSetSymbology As String
 
 Global aSQLTables(99) As String
 'Global aSppNodes(99) As String
@@ -243,6 +247,7 @@ Global iSppTable As Integer
 Global nConn As Integer
 Global iRecMax As Integer
 Global bClearLog As Logical
+Global bSetSymbology As Logical
 Global iOutputFormat As Integer
 Global sOutputFormat As String
 Global sOutputFile As String

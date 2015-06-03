@@ -20,7 +20,7 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector v1.00
+'* DataSelector v1.01
 '*
 '* Creates a dialog window which lists the SQL species tables
 '* in the remote SQL Server and allows the user to enter a
@@ -123,6 +123,9 @@ Sub GetDefaultValues
 
 					' Default setting for the output file format
 					sDefaultFormat = GetSingleNodeValue(hXMLNode, "DefaultFormat")
+
+					' Default setting for setting the symbology
+					sDefaultSetSymbology = GetSingleNodeValue(hXMLNode, "DefaultSetSymbology")
 
 				End If
 
@@ -231,6 +234,17 @@ Sub OpenDialog
 		Position 190,105
 		Value 1
 		Into iOutputFormat
+		Calling SetFileFormat
+
+	'-------------------------------------------------
+	' Add a checkbox for setting symbology
+	'-------------------------------------------------
+	Control CheckBox
+		ID 5
+		Title "Set default symbology?"
+		Position 190,160
+		Value FALSE
+		Into bSetSymbology
 
 	'-------------------------------------------------
 	' Add a checkbox for clearing the log file
@@ -252,7 +266,6 @@ Sub OpenDialog
 		Width 40
 		Calling SaveQuery
 	Control Button
-
 		ID 8
 		Title "Load"
 		Position 140,200
@@ -425,6 +438,13 @@ SetDefaults:
 		Case Else
 			Alter Control 4 Value 1
 	End Case
+
+	'-------------------------------------------------
+	' Set the default value for setting the symbology
+	'-------------------------------------------------
+	If UCase$(sDefaultSetSymbology) = "Y" OR UCase$(sDefaultSetSymbology) = "YES" Then
+		Alter Control 5 Value TRUE
+	End If
 
 Exit Sub
 
@@ -640,6 +660,26 @@ Sub CheckSelection
 
 End Sub
 
+Sub SetFileFormat
+'***************************************************************
+'* Show or hide the set symbology checkbox depending upon the
+'* selected file format.
+'***************************************************************
+
+	'-------------------------------------------------
+	' Check if the user has selected at least one table
+	' from the species table list
+	'-------------------------------------------------
+	Dim iFileFormat As Integer
+	iFileFormat = ReadControlValue(4)
+	If iFileFormat = 1 then
+		Alter Control 5 Show
+	Else
+		Alter Control 5 Hide
+	End If
+
+End Sub
+
 Sub ProcessSelection
 '***************************************************************
 '* Process the table selection
@@ -824,6 +864,53 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	ReadOnly
 
 	'-------------------------------------------------
+	' Check if the maximum record length will be exceeded
+	'-------------------------------------------------
+	Dim iRowLength As Integer
+	iRowLength = GetRowLength(sOutputName)
+	If iRowLength > 4096 Then
+
+		Call MyPrint("Record length exceeds maximum of 4096 bytes - selection cancelled.")
+
+		'-------------------------------------------------
+		' Drop the local table
+		'-------------------------------------------------
+		If TableIsOpen(sOutputName) Then
+			Call MyPrint("Dropping local table ...")
+			Drop Table sOutputName
+		End If
+
+		exit sub
+
+	Else
+		Call MyPrint("Total record length = " + iRowLength + " bytes")
+	End If
+
+	'-------------------------------------------------
+	' Check if the total data size will be exceeded
+	'-------------------------------------------------
+	Dim iDataSize As Integer
+	iDataSize = (iRowLength * iRecTotal) / 1024
+
+	If iDataSize > (1024*1024) Then
+
+		Call MyPrint("Total data size exceeds maximum of 2 Gb - selection cancelled.")
+
+		'-------------------------------------------------
+		' Drop the local table
+		'-------------------------------------------------
+		If TableIsOpen(sOutputName) Then
+			Call MyPrint("Dropping local table ...")
+			Drop Table sOutputName
+		End If
+
+		exit sub
+
+	Else
+		Call MyPrint("Total data size = " + iDataSize + " Kb")
+	End If
+
+	'-------------------------------------------------
 	' Unlink the temporary table to leave the local
 	' table as a regular standalone table
 	'-------------------------------------------------
@@ -860,46 +947,72 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	If iOutputFormat = 1 Then
 
 		'-------------------------------------------------
-		' Check if the local table is open
+		' If the symbology is to be set and the table is
+		' open
 		'-------------------------------------------------
-		If TableIsOpen(sOutputName) And
-		   ColumnExists(sOutputName, "GRPRECISION") Then
+		If bSetSymbology = TRUE AND TableIsOpen(sOutputName) Then
 
 			'-------------------------------------------------
-			' Turn on FastEdit to speed up the updates
+			' If the local table contains the GRPRECISION
+			' column (which the symbology is based on)
 			'-------------------------------------------------
-			Set Table sOutputName FastEdit On
+			If ColumnExists(sOutputName, "GRPRECISION") Then
 
-			'-------------------------------------------------
-			' Add an index to the precision field to speed
-			' up the symbology setting
-			'-------------------------------------------------
-			'Create Index On sOutputName(GRPRECISION)
+				'-------------------------------------------------
+				' Add an index to the precision field to speed
+				' up the symbology setting
+				'-------------------------------------------------
+				'Create Index On sOutputName(GRPRECISION)
 
-			'-------------------------------------------------
-			' Set the symbology for the table
-			'-------------------------------------------------
-			Call MyPrint("Setting symbology in table ...")
+				'-------------------------------------------------
+				' Turn on FastEdit to speed up the updates
+				'-------------------------------------------------
+				Set Table sOutputName FastEdit On
 
-			Dim sNodeName As String
-			sNodeName = "GiGL_Subset"
-			Call SetSymbology(sNodeName, sOutputName)
+				'-------------------------------------------------
+				' Set the symbology for the table
+				'-------------------------------------------------
+				Call MyPrint("Setting symbology in table ...")
 
-			Dim sCmd As String
-			sCmd = "Commit Table " + sOutputName
-			Run Command (sCmd)
+				Dim sNodeName As String
+				sNodeName = "GiGL_Subset"
+				Call SetSymbology(sNodeName, sOutputName)
+
+				'-------------------------------------------------
+				' Turn off FastEdit after updates
+				'-------------------------------------------------
+				Set Table sOutputName FastEdit Off
+
+			Else
+
+				Call MyPrint("Table does not contain 'GRPRECISION' column. Unable to set symbology.")
+
+			End If
 
 		End If
 
 		'-------------------------------------------------
-		' Add the table to the top most map window (if
-		' there is one), otherwise create a new map
-		' window using the table.
+		' Check if the local table is mappable (i.e.
+		' contains the 'OBJ' graphics column)
 		'-------------------------------------------------
-		If NumWindows() > 0 Then
-			Add Map Layer sOutputName
+		If TableInfo(sOutputName, TAB_INFO_MAPPABLE) Then
+
+	 		'-------------------------------------------------
+			' Add the table to the top most map window (if
+			' there is one), otherwise create a new map
+			' window using the table.
+			'-------------------------------------------------
+			If NumWindows() > 0 Then
+				Add Map Layer sOutputName
+			Else
+				Map From sOutputName
+			End If
+
 		Else
-			Map From sOutputName
+
+			Call MyPrint("Table does not have graphic information. Unable to map layer.")
+			Note "Table does not have graphic information. Unable to map layer."
+
 		End If
 
 		'-------------------------------------------------
@@ -1100,6 +1213,16 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 								Update NewStyle Set Obj = oUpdateObj Where RowID = x
 
 								'-------------------------------------------------
+								' Save the updates every 1000 rows
+								'-------------------------------------------------
+								'Dim y As Float
+								'y = (x / 1000)
+								'If Int(y) = y Then
+								'	sCmd = "Commit Table NewStyle"
+								'	Run Command (sCmd)
+								'End If
+
+								'-------------------------------------------------
 								' Fetch the next of the selected rows
 								'-------------------------------------------------
 								Fetch next from NewStyle
@@ -1116,6 +1239,12 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 
 					Loop
 
+					'-------------------------------------------------
+					' Save the updates
+					'-------------------------------------------------
+					sCmd = "Commit Table NewStyle"
+					Run Command (sCmd)
+
 				End If
 
 			End If
@@ -1123,6 +1252,7 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 		Else
 
 			Note "Error : " + MIGetErrorMessage()
+			Note "x = " + x
 
 		End If
 
@@ -1150,6 +1280,16 @@ CleanUp:
 		Close Table NewStyle
 	End If
 
+	'-------------------------------------------------
+	' Close the the Selection table if it is
+	' already/still open in the current MapInfo session
+	'-------------------------------------------------
+	If TableIsOpen("Selection") Then
+		Close Table Selection
+	End If
+
+	Run Menu command M_QUERY_UNSELECT
+
 	Exit Sub
 
 GetSymbologyError:
@@ -1165,7 +1305,7 @@ Sub AboutBox
 '***************************************************************
 
 	Dialog
-		Title "About Data Selector 1.00"
+		Title "About Data Selector 1.01"
 		Width 230
 		Height 115
 
