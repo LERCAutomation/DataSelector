@@ -70,7 +70,7 @@ BEGIN
 	SET @TempTable = @SpeciesTable + '_temp2'
 
 	-- Drop the index on the sequential primary key of the temporary table if it already exists
-	if exists (select column_name from INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE where TABLE_SCHEMA = @Schema and TABLE_NAME = @TempTable and COLUMN_NAME = 'MI_PRINX' and CONSTRAINT_NAME = 'PK_' + @TempTable + '_MI_PRINX')
+	If exists (select column_name from INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE where TABLE_SCHEMA = @Schema and TABLE_NAME = @TempTable and COLUMN_NAME = 'MI_PRINX' and CONSTRAINT_NAME = 'PK_' + @TempTable + '_MI_PRINX')
 	BEGIN
 		SET @sqlcommand = 'ALTER TABLE ' + @Schema + '.' + @TempTable +
 			' DROP CONSTRAINT PK_' + @TempTable + '_MI_PRINX'
@@ -78,7 +78,7 @@ BEGIN
 	END
 	
 	-- Drop the temporary table if it already exists
-	if exists (select TABLE_NAME from INFORMATION_SCHEMA.TABLES where TABLE_SCHEMA = @Schema and TABLE_NAME = @TempTable)
+	If exists (select TABLE_NAME from INFORMATION_SCHEMA.TABLES where TABLE_SCHEMA = @Schema and TABLE_NAME = @TempTable)
 	BEGIN
 		If @debug = 1
 			PRINT CONVERT(VARCHAR(32), CURRENT_TIMESTAMP, 109 ) + ' : ' + 'Dropping temporary table ...'
@@ -130,6 +130,11 @@ BEGIN
 
 	If @debug = 1
 		PRINT CONVERT(VARCHAR(32), CURRENT_TIMESTAMP, 109 ) + ' : ' + 'Performing selection ...'
+
+	If @WhereClause = ''
+		SET @WhereClause = 'Spp.SP_GEOMETRY IS NOT NULL'
+	Else
+		SET @WhereClause = @WhereClause + ' AND Spp.SP_GEOMETRY IS NOT NULL'
 
 	-- Select the species records into the temporary table
 	SET @sqlcommand = 'INSERT INTO ' + @Schema + '.' + @TempTable + ' (' +
@@ -201,8 +206,7 @@ BEGIN
 		',Spp.[RECDIC] ' +
 		',Spp.[SP_GEOMETRY] ' +
 		' FROM ' + @Schema + '.' + @SpeciesTable + ' As Spp' +
-		' WHERE ' + @WhereClause +
-		' AND Spp.SP_GEOMETRY IS NOT NULL'
+		' WHERE ' + @WhereClause
 	EXEC (@sqlcommand)
 
 	DECLARE @RecCnt Int
