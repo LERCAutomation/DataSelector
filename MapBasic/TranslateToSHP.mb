@@ -20,14 +20,19 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* TranslateToSHP v1.41
+'* TranslateToSHP v1.01
 '*
 '* Contains functions to translate MapInfo .tab files into
 '* ESRI .shp files.
 '*
 '*
-'* Created:		Andy Foy - February 2013
+'* Created:		Andy Foy - June 2015
 '* Last revised:	Andy Foy - June 2015
+'*
+'* *****************  Version 1.01  *****************
+'* Author: Andy Foy		Date: 03/06/2015
+'* A. Initial version of code based on Data Extractor tool.
+'* 
 '***************************************************************
 Include "DataSelector.def"
 

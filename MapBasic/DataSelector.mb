@@ -20,7 +20,7 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector v1.01
+'* DataSelector v1.02
 '*
 '* Creates a dialog window which lists the SQL species tables
 '* in the remote SQL Server and allows the user to enter a
@@ -31,6 +31,16 @@
 '*
 '* Created:		Andy Foy - June 2015
 '* Last revised:	Andy Foy - June 2015
+'*
+'* *****************  Version 1.02  *****************
+'* Author: Andy Foy		Date: 08/06/2015
+'* A. Added userid to temporary SQL table name to enable
+'*	concurrent use of tool.
+'* 
+'* *****************  Version 1.01  *****************
+'* Author: Andy Foy		Date: 03/06/2015
+'* A. Initial version of tool.
+'* 
 '***************************************************************
 Include "DataSelector.def"
 
@@ -696,16 +706,16 @@ Sub ProcessSelection
 	Do Case iOutputFormat
 		Case 1
 			sOutputFormat = "tab"
-			Call MyPrint("Output Format = 'tab'")
+			Call MyPrint("Output Format = '.tab'")
 		Case 2
 			sOutputFormat = "shp"
-			Call MyPrint("Output Format = 'shp'")
+			Call MyPrint("Output Format = '.shp'")
 		Case 3
 			sOutputFormat = "csv"
-			Call MyPrint("Output Format = 'csv'")
+			Call MyPrint("Output Format = '.csv'")
 		Case Else
 			sOutputFormat = "tab"
-			Call MyPrint("Output Format = 'tab'")
+			Call MyPrint("Output Format = '.tab'")
 	End Case
 
 	'-------------------------------------------------
@@ -776,10 +786,17 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	OnError Goto ErrorTrap
 
 	'-------------------------------------------------
+	' Get the current user ID
+	'-------------------------------------------------
+	Dim sUserID As String
+	sUserID = GetUserID()
+	sUserID = StringReplace(sWhereClause, " ", "_")
+
+	'-------------------------------------------------
 	' Setup the temporary and local table names
 	'-------------------------------------------------
 	Dim sTempName As String
-	sTempName = sTableName + "_temp2"
+	sTempName = sTableName + "_" + sUserID
 	Call MyPrint("Selecting from table = '" + sTableName + "' ...")
 
 	'-------------------------------------------------
@@ -789,7 +806,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	sWhereClause = StringReplace(sWhereClause, "'", "''")
 	Dim nStmt1 As Integer
 	nStmt1 = Server_Execute(nConn, "EXECUTE dbo.usp_SelectSppSubset '" + sDefaultSchema
-	 + "', '" + sTableName + "', '" + sWhereClause + "'")
+	 + "', '" + sTableName + "', '" + sWhereClause + "', '" + sUserID + "'")
 
 	'-------------------------------------------------
 	' Close the results
@@ -1368,7 +1385,7 @@ Sub AboutBox
 '***************************************************************
 
 	Dialog
-		Title "About Data Selector 1.01"
+		Title "About Data Selector 1.02"
 		Width 230
 		Height 115
 

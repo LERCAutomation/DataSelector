@@ -20,13 +20,22 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* GenFunctions v1.41
+'* GenFunctions v1.02
 '*
 '* Contains general functions used by the DataSelector tool.
 '*
 '*
 '* Created:		Andy Foy - February 2013
 '* Last revised:	Andy Foy - June 2015
+'* 
+'* *****************  Version 1.02  *****************
+'* Author: Andy Foy		Date: 08/06/2015
+'* A. Added functions to return userid.
+'* 
+'* *****************  Version 1.01  *****************
+'* Author: Andy Foy		Date: 03/06/2015
+'* A. Initial version of code based on Data Extractor tool.
+'* 
 '***************************************************************
 Include "DataSelector.def"
 
@@ -342,5 +351,38 @@ Function GetRowLength(ByVal sTableName As String) As Integer
 	Next
 
 	GetRowLength = iRowLength
+
+End Function
+
+Function GetUserID() As String
+'*************************************************
+'* Get the User ID of the current user
+'*************************************************
+
+	'-------------------------------------------------
+	' Loop through all the columns in the table and
+	' sum the column lengths
+	'-------------------------------------------------
+	Dim sUserID As String ' receives name of the user
+	Dim iLength As Integer ' length of the string
+	Dim iRetVal As Integer ' return value
+
+	'-------------------------------------------------
+	' Create room in the buffer to receive the returned string
+	'-------------------------------------------------
+	sUserID = Space$(255)
+	iLength = 255
+
+	'-------------------------------------------------
+	' Get the user id
+	'-------------------------------------------------
+	iRetVal = GetUserName(sUserID, iLength)
+
+	'-------------------------------------------------
+	' Extract the returned info from the buffer
+	'-------------------------------------------------
+	sUserID = Left$(sUserID, iLength - 1)
+
+	GetUserID = sUserID
 
 End Function
