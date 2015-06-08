@@ -30,7 +30,7 @@
 '* 
 '* *****************  Version 1.02  *****************
 '* Author: Andy Foy		Date: 08/06/2015
-'* A. Added functions to return userid.
+'* A. Added function to return userid.
 '* 
 '* *****************  Version 1.01  *****************
 '* Author: Andy Foy		Date: 03/06/2015
@@ -301,11 +301,7 @@ Exit Function
 '-------------------------
 ErrorOccured:
 
-
 End Function
-
-
-
 
 Function GetRowLength(ByVal sTableName As String) As Integer
 '*************************************************

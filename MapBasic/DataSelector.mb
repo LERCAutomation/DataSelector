@@ -790,7 +790,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	'-------------------------------------------------
 	Dim sUserID As String
 	sUserID = GetUserID()
-	sUserID = StringReplace(sWhereClause, " ", "_")
+	sUserID = StringReplace(sUserID, " ", "_")
 
 	'-------------------------------------------------
 	' Setup the temporary and local table names
