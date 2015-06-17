@@ -58,14 +58,14 @@ if exists (select ROUTINE_NAME from INFORMATION_SCHEMA.ROUTINES where ROUTINE_SC
 GO
 
 -- Create the stored procedure
-CREATE PROCEDURE [dbo].[usp_SelectSppSubset] @Schema varchar(50), @SpeciesTable varchar(50), @WhereClause varchar(2000), @UserId varchar(50)
+CREATE PROCEDURE [dbo].[usp_SelectSppSubset] @Schema varchar(50), @SpeciesTable varchar(50), @WhereClause varchar(2000), @UserId varchar(50) = 'temp'
 AS
 BEGIN
 
 	SET NOCOUNT ON
 
 	DECLARE @debug int
-	Set @debug = 1
+	Set @debug = 0
 
 	If @debug = 1
 		PRINT CONVERT(VARCHAR(32), CURRENT_TIMESTAMP, 109 ) + ' : ' + 'Started.'
@@ -113,6 +113,7 @@ BEGIN
 		',EASTINGS ' +
 		',NORTHINGS ' +
       	',GRPRECISION ' +
+		',GRQUALIFIER ' +
 		',QUALIFIER ' +
 		',COMMENTS ' +
 		',BREEDING_STATUS ' +
@@ -160,6 +161,7 @@ BEGIN
 		',EASTINGS ' +
 		',NORTHINGS ' +
       	',GRPRECISION ' +
+		',GRQUALIFIER ' +
 		',QUALIFIER ' +
 		',COMMENTS ' +
 		',BREEDING_STATUS ' +
@@ -194,6 +196,7 @@ BEGIN
 		',Spp.[EASTINGS] ' +
 		',Spp.[NORTHINGS] ' +
       	',Spp.[GRPRECISION] ' +
+		',Spp.[GRQUALIFIER] ' +
 		',Spp.[QUALIFIER] ' +
 		',Spp.[COMMENTS] ' +
 		',Spp.[BREEDING_STATUS] ' +
