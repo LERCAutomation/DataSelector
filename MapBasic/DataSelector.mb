@@ -934,7 +934,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	Dim iDataSize As Integer
 	iDataSize = (iRowLength * iRecTotal) / 1024
 
-	If iDataSize > (1024*1024) Then
+	If iDataSize > (2*1024*1024) Then
 
 		Call MyPrint("Total data size exceeds maximum of 2 Gb - selection cancelled.")
 		Note "Total data size exceeds maximum of 2 Gb - selection cancelled."
