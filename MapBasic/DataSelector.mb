@@ -830,16 +830,6 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	Server nStmt2 Close
 
 	'-------------------------------------------------
-	' Check if the maximum number of records will be
-	' exceeded
-	'-------------------------------------------------
-	If iRecTotal > iRecMax Then
-		Call MyPrint("Record count exceeds maximum of " + iRecMax + " - selection cancelled.")
-		Note "Record count exceeds maximum of " + iRecMax + " - selection cancelled."
-		Exit Sub
-	End If
-
-	'-------------------------------------------------
 	' Check if any records were selected
 	'-------------------------------------------------
 	If iRecTotal = 0 Then
@@ -849,6 +839,16 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	End If
 
 	Call MyPrint("" + iRecTotal + " records selected.")
+
+	'-------------------------------------------------
+	' Check if the maximum number of records will be
+	' exceeded
+	'-------------------------------------------------
+	If iRecTotal > iRecMax Then
+		Call MyPrint("Record count exceeds maximum of " + iRecMax + " - selection cancelled.")
+		Note "Record count exceeds maximum of " + iRecMax + " - selection cancelled."
+		Exit Sub
+	End If
 
 	'-------------------------------------------------
 	' Close the temporary table if already/still open
