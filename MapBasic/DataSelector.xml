@@ -57,7 +57,7 @@ as a spreadsheet.
   <!-- The SQL statement used to list all the species tables in SQL Server that can be selected
        by the user to extract from -->
   <TableListSQL>
-	<value>Select table_name From information_schema.tables Where table_name Like 'GiGL_SPP%' And table_name Not Like '%_temp%' Order By table_name</value>
+	<value>Select table_name From information_schema.tables Where table_name Like 'GiGL[_]Spp[_]%' And table_name Not Like 'GiGL[_]Spp[_]%[_]%' Order By table_name</value>
   </TableListSQL>
 
   <!-- The maximum number of records what will be extracted in any one extract -->
