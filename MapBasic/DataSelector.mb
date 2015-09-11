@@ -20,18 +20,35 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector v1.02
+'* DataSelector v1.03
 '*
 '* Creates a dialog window which lists the SQL species tables
 '* in the remote SQL Server and allows the user to enter a
-'* where clause text used to select a subset of the species
-'* records. It will then create a MapInfo and/or ArcGIS file
-'* and/or a CSV file of the selected records.
-'*
+'* where clause and group by and order by text to select a
+'* subset of the species records. It will then create a
+'* MapInfo .tab file, ArcGIS .shp file or Text .csv file
+'* of the selected records.
 '*
 '* Created:		Andy Foy - June 2015
-'* Last revised:	Andy Foy - June 2015
+'* Last revised:	Andy Foy - Sept 2015
 '*
+'* *****************  Version 1.03  *****************
+'* Author: Andy Foy		Date: 08/09/2015
+'* A. Added Group By and Order By fields in dialog.
+'* B. Include Group By and Order By values in stored
+'*    procedure.
+'* C. Include Group By and Order By values when saving
+'*    and loading to/from .qsf files.
+'* D. Call new SQL stored procedures to create and
+'*    clear selected subset tables.
+'* E. Check if result contains spatial data and
+'*    open in map or browser as applicable.
+'* F. Remove default behaviour from 'Ok' button.
+'* G. Added functionality to spatially plot points
+'*    and polygons for non-spatial data.
+'* H. Improved performance for setting symbology.
+'* I. Display numbers with thousand separators in log.
+'* 
 '* *****************  Version 1.02  *****************
 '* Author: Andy Foy		Date: 08/06/2015
 '* A. Added userid to temporary SQL table name to enable
@@ -78,6 +95,7 @@ Sub GetDefaultValues
 	Dim hXMLDoc As MIXmlDocument
 	Dim hXMLRoot As MIXmlNode
 	Dim hXMLNode As MIXmlNode
+	Dim hXMLSubNode As MIXmlNode
 	Dim hXMLFilesNodeList As MIXMLNodeList
 	Dim hXMLFilesNodeParent As MIXmlNode
 	Dim hXMLFilesNode As MIXmlNode
@@ -140,6 +158,44 @@ Sub GetDefaultValues
 					' Default setting for setting the symbology
 					sDefaultSetSymbology = GetSingleNodeValue(hXMLNode, "DefaultSetSymbology")
 
+					' Whether the SQL database tables are spatially enabled
+					Dim sTablesSpatial As String
+					sTablesSpatial = GetSingleNodeValue(hXMLNode, "TablesSpatiallyEnabled")
+					If UCase$(sTablesSpatial) = "Y" OR UCase$(sTablesSpatial) = "YES" Then
+						bSpatialTables = True
+					Else
+						bSpatialTables = False
+					End If
+
+					'-------------------------------------------------
+					' If the tables are not spatially enabled load
+					' the spatial and precision column names used
+					' to plot the data spatially
+					'-------------------------------------------------
+					If bSpatialTables = False Then
+
+						' Default setting for setting the symbology
+						sDefaultPointPrecision = GetSingleNodeValue(hXMLNode, "DefaultPointsPrecision")
+
+						'-------------------------------------------------
+						' Get a handle on the DataExtractor node
+						'-------------------------------------------------
+						hXMLSubNode = MIXmlSelectSingleNode(hXMLNode, "SpatialColumns")
+			          If hXMLSubNode Then
+	
+							' Column name for the eastings value
+							sEastingCol = GetSingleNodeValue(hXMLSubNode, "Easting")
+
+							' Column name for the northings value
+							sNorthingCol = GetSingleNodeValue(hXMLSubNode, "Northing")
+
+							' Column name for the precision value
+							sPrecisionCol = GetSingleNodeValue(hXMLSubNode, "Precision")
+
+						End If
+
+					End If
+	
 				End If
 
 			End If
@@ -159,6 +215,7 @@ CleanUp:
 	If hXMLFilesNode Then Call MIXmlNodeDestroy(hXMLFilesNode) End If
 	If hXMLFilesNodeList Then Call MIXmlNodeListDestroy(hXMLFilesNodeList) End If
 	If hXMLFilesNodeParent Then Call MIXmlNodeDestroy(hXMLFilesNodeParent) End If
+	If hXMLSubNode Then Call MIXmlNodeDestroy(hXMLSubNode) End If
 	If hXMLNode Then Call MIXmlNodeDestroy(hXMLNode) End If
 	If hXMLRoot Then Call MIXmlNodeDestroy(hXMLRoot) End If
 	If hXMLDoc Then Call MIXmlDocumentDestroy(hXMLDoc) End If
@@ -192,7 +249,7 @@ Sub OpenDialog
 	Dialog
 		Title "Data Extractor"
 		Width 300
-		Height 220
+		Height 310
 		Position 50,70
 		Calling DialogSetup
 
@@ -200,27 +257,53 @@ Sub OpenDialog
 	' Add a column names textbox
 	'-------------------------------------------------
 	Control StaticText
-		Title "Column Names:"
+		Title "Columns:"
 		Position 10,10
 	Control EditText
 		ID 1
 		Position 10,20
 		Height 80
 		Width 170
-		Into sColumnNames
+		'Into sColumnNames
 
 	'-------------------------------------------------
 	' Add a where clause textbox
 	'-------------------------------------------------
 	Control StaticText
-		Title "Where Clause:"
+		Title "Where:"
 		Position 10,110
 	Control EditText
 		ID 2
 		Position 10,120
-		Height 70
+		Height 40
 		Width 170
-		Into sWhereClause
+		'Into sWhereClause
+
+	'-------------------------------------------------
+	' Add a group by textbox
+	'-------------------------------------------------
+	Control StaticText
+		Title "Group By:"
+		Position 10,170
+	Control EditText
+		ID 3
+		Position 10,180
+		Height 40
+		Width 170
+		'Into sGroupClause
+
+	'-------------------------------------------------
+	' Add an order by textbox
+	'-------------------------------------------------
+	Control StaticText
+		Title "Order By:"
+		Position 10,230
+	Control EditText
+		ID 4
+		Position 10,240
+		Height 40
+		Width 170
+		'Into sOrderClause
 
 	'-------------------------------------------------
 	' Add a SQL species table listbox
@@ -229,7 +312,7 @@ Sub OpenDialog
 		Title "SQL Species Tables:"
 		Position 190,10
 	Control ListBox
-		ID 3
+		ID 5
 		Title ""
 		Position 190, 20
 		Height 60
@@ -242,46 +325,46 @@ Sub OpenDialog
 		Title "Output File Format:"
 		Position 190,90
 	Control RadioGroup
-		ID 4
+		ID 6
 		Title "MapInfo (.tab) file;ESRI (.shp) file;Comma-Separated (.csv) file"
 		Position 190,105
 		Value 1
-		Into iOutputFormat
+		'Into iOutputFormat
 		Calling SetFileFormat
 
 	'-------------------------------------------------
 	' Add a checkbox for setting symbology
 	'-------------------------------------------------
 	Control CheckBox
-		ID 5
+		ID 7
 		Title "Set default symbology?"
 		Position 190,160
 		Value FALSE
-		Into bSetSymbology
+		'Into bSetSymbology
 
 	'-------------------------------------------------
 	' Add a checkbox for clearing the log file
 	'-------------------------------------------------
 	Control CheckBox
-		ID 6
+		ID 8
 		Title "Clear log file?"
-		Position 10,200
+		Position 10,290
 		Value TRUE
-		Into bClearLog
+		'Into bClearLog
 
 	'-------------------------------------------------
 	' Add Save and Load buttons
 	'-------------------------------------------------
 	Control Button
-		ID 7
+		ID 9
 		Title "Save"
-		Position 95,200
+		Position 95,290
 		Width 40
 		Calling SaveQuery
 	Control Button
-		ID 8
+		ID 10
 		Title "Load"
-		Position 140,200
+		Position 140,290
 		Width 40
 		Calling LoadQuery
 
@@ -289,69 +372,41 @@ Sub OpenDialog
 	' Add Ok and Cancel buttons
 	'-------------------------------------------------
 	Control CancelButton
-		Position 205,200
+		Position 205,290
 		Width 40
-	Control OKButton
-		Position 250,200
+	Control Button
+		ID 11
+		Title "Ok"
+		Position 250,290
 		Width 40
 		Calling CheckSelection
 
-	If CommandInfo(CMD_INFO_DLG_OK) And
-		iExtractTot > 0 Then
+	'-------------------------------------------------
+	' Add a checkbox for plotting spatially
+	'-------------------------------------------------
+	Control CheckBox
+		ID 12
+		Title "Plot data spatially?"
+		Position 190,210
+		Value TRUE
+		Hide
+		'Into bSetSymbology
 
-		'-------------------------------------------------
-		' Clear the log file
-		'-------------------------------------------------
-		If bClearLog = True Then
-			If FileExists(sLogFileName) Then
-				Kill sLogFileName
-			End If
-		End If
-
-		Call MyPrint("----------------------------------------------------------------------")
-		Call MyPrint("Process started!")
-		Call MyPrint("----------------------------------------------------------------------")
-		Call MyPrint("")
-
-		'-------------------------------------------------
-		' Process the selection
-		'-------------------------------------------------
-		Call ProcessSelection
-
-		Call MyPrint("")
-		Call MyPrint("----------------------------------------------------------------------")
-		Call MyPrint("Process completed!")
-		Call MyPrint("----------------------------------------------------------------------")
-		Dim lResponse As Logical
-		lResponse = Ask("Processing complete!" + Chr$(10) + Chr$(10) + Chr$(10) + "Show log file?", "Yes", "No")
-
-		'-------------------------------------------------
-		' Ask the user if they want to see the log file
-		'-------------------------------------------------
-		If lResponse = True Then
-			'-------------------------------------------------
-			' Open the Message window and clear it
-			'-------------------------------------------------
-			Close Window Message
-			Open Window Message
-			Set Window Message
-				Position (7,4)
-				Width 6
-				Height 5
-			Print(chr$(12))
-
-			'-------------------------------------------------
-			' Display the log file in the message window
-			'-------------------------------------------------
-			Call PrintLogFile
-
-		End If
-
-		'-------------------------------------------------
-		' Disconnect the connection to the SQL Server database
-		'-------------------------------------------------
-		Server nConn Disconnect
-	End If
+	'-------------------------------------------------
+	' Add an order by textbox
+	'-------------------------------------------------
+	Control StaticText
+		ID 13
+		Title "Max Points Precision:"
+		Position 190,230
+		Hide
+	Control EditText
+		ID 14
+		Position 190,240
+		Height 15
+		Width 30
+		Hide
+		'Into sOrderClause
 
 Done:
 	Exit Sub
@@ -434,8 +489,20 @@ Sub DialogSetup
 	' Update the Species Table list to show the list
 	' of tables
 	'-------------------------------------------------
-	Alter Control 3 Title FROM Variable aSQLTables
-	Alter Control 3 Value 1
+	Alter Control 5 Title FROM Variable aSQLTables
+	Alter Control 5 Value 1
+
+	'-------------------------------------------------
+	' Show or hide the spatial controls
+	'-------------------------------------------------
+	If bSpatialTables = False
+	And sEastingCol <> ""
+	And sNorthingCol <> ""
+	And sPrecisionCol <> "" Then
+		Alter Control 12 Show
+		Alter Control 13 Show
+		Alter Control 14 Show
+	End If
 
 SetDefaults:
 	'-------------------------------------------------
@@ -443,20 +510,27 @@ SetDefaults:
 	'-------------------------------------------------
 	Do Case UCase$(sDefaultFormat)
 		Case "TAB"
-			Alter Control 4 Value 1
+			Alter Control 6 Value 1
 		Case "SHP"
-			Alter Control 4 Value 2
+			Alter Control 6 Value 2
 		Case "CSV"
-			Alter Control 4 Value 3
+			Alter Control 6 Value 3
 		Case Else
-			Alter Control 4 Value 1
+			Alter Control 6 Value 1
 	End Case
 
 	'-------------------------------------------------
 	' Set the default value for setting the symbology
 	'-------------------------------------------------
 	If UCase$(sDefaultSetSymbology) = "Y" OR UCase$(sDefaultSetSymbology) = "YES" Then
-		Alter Control 5 Value TRUE
+		Alter Control 7 Value TRUE
+	End If
+
+	'-------------------------------------------------
+	' Set the detault maximum point precision
+	'-------------------------------------------------
+	If bSpatialTables = False Then
+		Alter Control 14 Value Str$(val(sDefaultPointPrecision))
 	End If
 
 Exit Sub
@@ -528,15 +602,19 @@ Sub SaveQuery
 	'-------------------------------------------------
 	' Replace any CR characters with '$$' before saving
 	'-------------------------------------------------
-	Dim sFields, sWhere As String
+	Dim sFields, sWhere, sGroup, sOrder As String
 	sFields = StringReplace(ReadControlValue(1), chr$(10), "$$")
 	sWhere = StringReplace(ReadControlValue(2), chr$(10), "$$")
+	sGroup = StringReplace(ReadControlValue(3), chr$(10), "$$")
+	sOrder = StringReplace(ReadControlValue(4), chr$(10), "$$")
 
 	'-------------------------------------------------
 	' Save the query details to the query file
 	'-------------------------------------------------
 	Print #5, "Fields {" + sFields + "}"
 	Print #5, "Where {" + sWhere + "}"
+	Print #5, "Group By {" + sGroup + "}"
+	Print #5, "Order By {" + sOrder + "}"
 
 	'-------------------------------------------------
 	' Close the query file
@@ -610,7 +688,7 @@ Sub LoadQuery
 	' Loop through all the lines until the file
 	' is empty
 	'-------------------------------------------------
-	Dim sFieldsText, sWhereText As String
+	Dim sFieldsText, sWhereText, sGroupText, sOrderText As String
 	Do Until EOF(6)
 
 		'-------------------------------------------------
@@ -622,6 +700,14 @@ Sub LoadQuery
 
 		If UCase$(Left$(sLine, 7)) = "WHERE {" Then
 			sWhereText = Mid$(sLine, 8, Len(sLine) - 8)
+		End if
+
+		If UCase$(Left$(sLine, 10)) = "GROUP BY {" Then
+			sGroupText = Mid$(sLine, 11, Len(sLine) - 11)
+		End if
+
+		If UCase$(Left$(sLine, 10)) = "ORDER BY {" Then
+			sOrderText = Mid$(sLine, 11, Len(sLine) - 11)
 		End if
 
 		'-------------------------------------------------
@@ -640,15 +726,19 @@ Sub LoadQuery
 	' Replace any '$$' characters with CR before loading
 	' into the form
 	'-------------------------------------------------
-	Dim sFields, sWhere As String
+	Dim sFields, sWhere, sGroup, sOrder As String
 	sFields = StringReplace(sFieldsText, "$$", chr$(10))
 	sWhere = StringReplace(sWhereText, "$$", chr$(10))
+	sGroup = StringReplace(sGroupText, "$$", chr$(10))
+	sOrder = StringReplace(sOrderText, "$$", chr$(10))
 
 	'-------------------------------------------------
 	' Load the query details to the form
 	'-------------------------------------------------
 	Alter Control 1 Value sFields
 	Alter Control 2 Value sWhere
+	Alter Control 3 Value sGroup
+	Alter Control 4 Value sOrder
 
 End Sub
 
@@ -657,19 +747,96 @@ Sub CheckSelection
 '* Check the user's selections and process according
 '***************************************************************
 
-	iExtractTot = 0
+	'-------------------------------------------------
+	' Store the dialog variables
+	'-------------------------------------------------
+	sColumnNames = ReadControlValue(1)
+	sWhereClause = ReadControlValue(2)
+	sGroupClause = ReadControlValue(3)
+	sOrderClause = ReadControlValue(4)
+	iSppTable = ReadControlValue(5)
+	iOutputFormat = ReadControlValue(6)
+	bSetSymbology = ReadControlValue(7)
+	bClearLog = ReadControlValue(8)
+	bPlotSpatialData = ReadControlValue(12)
+	sMaxPointsPrecision = ReadControlValue(14)
 
 	'-------------------------------------------------
 	' Check if the user has selected at least one table
 	' from the species table list
 	'-------------------------------------------------
-	iSppTable = ReadControlValue(3)
 	if iSppTable = 0 then
 		Note "No table has been selected!"
 		Exit Sub
 	End If
 
-	iExtractTot = 1
+	'-------------------------------------------------
+	' Check if the user has entered a valid maximum
+	' points precision value
+	'-------------------------------------------------
+	If bPlotSpatialData = True
+	And sMaxPointsPrecision <> str$(val(sMaxPointsPrecision)) Then
+		Note "Max points precision must be numeric!"
+		Exit Sub
+	End If
+
+	'-------------------------------------------------
+	' Close the dialog
+	'-------------------------------------------------
+	Dialog Remove
+
+	'-------------------------------------------------
+	' Clear the log file
+	'-------------------------------------------------
+	If bClearLog = True Then
+		If FileExists(sLogFileName) Then
+			Kill sLogFileName
+		End If
+	End If
+
+	Call MyPrint("----------------------------------------------------------------------")
+	Call MyPrint("Process started!")
+	Call MyPrint("----------------------------------------------------------------------")
+	Call MyPrint("")
+
+	'-------------------------------------------------
+	' Process the selection
+	'-------------------------------------------------
+	Call ProcessSelection
+
+	Call MyPrint("")
+	Call MyPrint("----------------------------------------------------------------------")
+	Call MyPrint("Process completed!")
+	Call MyPrint("----------------------------------------------------------------------")
+	Dim lResponse As Logical
+	lResponse = Ask("Processing complete!" + Chr$(10) + Chr$(10) + Chr$(10) + "Show log file?", "Yes", "No")
+
+	'-------------------------------------------------
+	' Ask the user if they want to see the log file
+	'-------------------------------------------------
+	If lResponse = True Then
+		'-------------------------------------------------
+		' Open the Message window and clear it
+		'-------------------------------------------------
+		Close Window Message
+		Open Window Message
+		Set Window Message
+			Position (7,4)
+			Width 7
+			Height 5
+		Print(chr$(12))
+
+		'-------------------------------------------------
+		' Display the log file in the message window
+		'-------------------------------------------------
+		Call PrintLogFile
+
+	End If
+
+	'-------------------------------------------------
+	' Disconnect the connection to the SQL Server database
+	'-------------------------------------------------
+	Server nConn Disconnect
 
 End Sub
 
@@ -684,11 +851,11 @@ Sub SetFileFormat
 	' from the species table list
 	'-------------------------------------------------
 	Dim iFileFormat As Integer
-	iFileFormat = ReadControlValue(4)
+	iFileFormat = ReadControlValue(6)
 	If iFileFormat = 1 then
-		Alter Control 5 Show
+		Alter Control 7 Show
 	Else
-		Alter Control 5 Hide
+		Alter Control 7 Hide
 	End If
 
 End Sub
@@ -722,6 +889,7 @@ Sub ProcessSelection
 	' Prompt the user for the output file destination
 	'-------------------------------------------------
 	sOutputFile = FileSaveAsDlg(sDefaultExtractPath, "", sOutputFormat, "Select where to save the output file")
+
 	if sOutputFile = "" then
 		Call MyPrint("No output file selected - selection cancelled")
 		Note "No output file selected - selection cancelled"
@@ -766,13 +934,15 @@ Sub ProcessSelection
 	' Call the subroutine to select the records from
 	' the selected table using the user's where clause
 	'-------------------------------------------------
-	Call SelectSpecies(nConn, sColumnNames, sWhereClause, sOutputPath, sShortName, sTableName)
+	Call SelectSpecies(nConn, sColumnNames, sWhereClause, sGroupClause, sOrderClause, sOutputPath, sShortName, sTableName)
 
 End Sub
 
 Sub SelectSpecies (ByVal nConn As Integer,
 	sColumnNames As String,
 	sWhereClause As String,
+	sGroupClause As String,
+	sOrderClause As String,
 	sOutputPath As String,
 	sOutputName As String,
 	sTableName As String)
@@ -791,6 +961,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	Dim sUserID As String
 	sUserID = GetUserID()
 	sUserID = StringReplace(sUserID, " ", "_")
+	sUserID = StringReplace(sUserID, ".", "_")
 
 	'-------------------------------------------------
 	' Setup the temporary and local table names
@@ -800,13 +971,16 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	Call MyPrint("Selecting from table = '" + sTableName + "' ...")
 
 	'-------------------------------------------------
-	' Execute the SQL Server stored procedure to select
-	' the species records based on the where clause
+	' Execute a SQL Server stored procedure to select
+	' the species records based on the where clause,
+	' group by and order by
 	'-------------------------------------------------
 	sWhereClause = StringReplace(sWhereClause, "'", "''")
 	Dim nStmt1 As Integer
-	nStmt1 = Server_Execute(nConn, "EXECUTE dbo.usp_SelectSppSubset '" + sDefaultSchema
-	 + "', '" + sTableName + "', '" + sWhereClause + "', '" + sUserID + "'")
+	nStmt1 = Server_Execute(nConn, "EXECUTE dbo.AFSelectSppSubset '"
+	 + sDefaultSchema	 + "', '" + sTableName + "', '" + sColumnNames + "', '"
+	 + sWhereClause + "', '" + sGroupClause + "', '" + sOrderClause + "', '"
+	 + sUserID + "'")
 
 	'-------------------------------------------------
 	' Close the results
@@ -838,7 +1012,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 		Exit Sub
 	End If
 
-	Call MyPrint("" + iRecTotal + " records selected.")
+	Call MyPrint("" + FormatNumber$(iRecTotal) + " records selected.")
 
 	'-------------------------------------------------
 	' Check if the maximum number of records will be
@@ -881,10 +1055,10 @@ Sub SelectSpecies (ByVal nConn As Integer,
 
 	'-------------------------------------------------
 	' Set up the SQL statement for creating an empty
-	' temporary table (to check the record length)
+	' temporary table (to check the record length).
 	'-------------------------------------------------
 	Dim sSQLStmt As String
-	sSQLStmt = "Select " + sColumnNames + " From " + sDefaultSchema + "." + sTempName + " WHERE GRPRECISION = -1"
+	sSQLStmt = "Select Top(0) * From " + sDefaultSchema + "." + sTempName
 
 	'-------------------------------------------------
 	' Link the temporary table as a local table
@@ -905,14 +1079,25 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	sTableAlias = TableInfo(0, TAB_INFO_NAME)
 
 	'-------------------------------------------------
+	' Check if the table contains an Ocj column
+	' which indicates if there is any spatial data
+	'-------------------------------------------------
+	Dim bSpatial As Logical
+	If ColumnExists(sTableAlias, "Obj") Then
+		bSpatial = True
+	Else
+		bSpatial = False
+	End If
+
+	'-------------------------------------------------
 	' Check if the maximum record length will be exceeded
 	'-------------------------------------------------
 	Dim iRowLength As Integer
 	iRowLength = GetRowLength(sTableAlias)
 	If iRowLength > 4096 Then
 
-		Call MyPrint("Record length exceeds maximum of 4096 bytes - selection cancelled.")
-		Note "Record length exceeds maximum of 4096 bytes - selection cancelled."
+		Call MyPrint("Record length exceeds maximum of 4,096 bytes - selection cancelled.")
+		Note "Record length exceeds maximum of 4,096 bytes - selection cancelled."
 
 		'-------------------------------------------------
 		' Drop the local table
@@ -925,7 +1110,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 		Exit Sub
 
 	Else
-		Call MyPrint("Total record length = " + iRowLength + " bytes")
+		Call MyPrint("Total record length = " + FormatNumber$(iRowLength) + " bytes")
 	End If
 
 	'-------------------------------------------------
@@ -950,7 +1135,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 		Exit Sub
 
 	Else
-		Call MyPrint("Total data size = " + iDataSize + " Kb")
+		Call MyPrint("Total data size = " + FormatNumber$(iDataSize) + " Kb")
 	End If
 
 	'-------------------------------------------------
@@ -968,7 +1153,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 		Close Table sTableAlias
 	End If
 
-	sSQLStmt = "Select " + sColumnNames + " From " + sDefaultSchema + "." + sTempName
+	sSQLStmt = "Select * From " + sDefaultSchema + "." + sTempName
 
 	'-------------------------------------------------
 	' Link the temporary table as a local table
@@ -995,6 +1180,102 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	Unlink sTableAlias
 
 	'-------------------------------------------------
+	' Execute a SQL Server stored procedure to delete
+	' the species records temporary table
+	'-------------------------------------------------
+	Dim nStmt3 As Integer
+	nStmt3 = Server_Execute(nConn, "EXECUTE dbo.AFClearSppSubset '" + sDefaultSchema
+	 + "', '" + sTableName + "', '" + sUserID + "'")
+
+	'-------------------------------------------------
+	' Close the results
+	'-------------------------------------------------
+	Server nStmt3 Close
+
+	Set ProgressBars Off
+
+	'-------------------------------------------------
+	' If the local table contains a MI_STYLE
+	' column then delete the column
+	'-------------------------------------------------
+	If ColumnExists(sTableAlias, "MI_STYLE") Then
+		Alter Table sTableAlias (Drop MI_STYLE)
+	End If
+
+	'-------------------------------------------------
+	' If the local table contains a MI_PRINX
+	' column then delete the column
+	'-------------------------------------------------
+	If ColumnExists(sTableAlias, "MI_PRINX") Then
+		Alter Table sTableAlias (Drop MI_PRINX)
+	End If
+
+	'-------------------------------------------------
+	' If the local table contains a MI_SQL_REC_NUM
+	' column then delete the column
+	'-------------------------------------------------
+	If ColumnExists(sTableAlias, "MI_SQL_REC_NUM") Then
+		Alter Table sTableAlias (Drop MI_SQL_REC_NUM)
+	End If
+
+	Set ProgressBars On
+
+	'-------------------------------------------------
+	' If the data is to be plotted spatially
+	'-------------------------------------------------
+	If bPlotSpatialData = True Then
+
+		'-------------------------------------------------
+		' Check the local table contains the required
+		' columns
+		'-------------------------------------------------
+		If ColumnExists(sTableAlias, sEastingCol) And
+		   ColumnExists(sTableAlias, sNorthingCol) And
+		   ColumnExists(sTableAlias, sPrecisionCol) Then
+
+			'-------------------------------------------------
+			' If the local table doesn't contain an Obj
+			' column then add the column
+			'-------------------------------------------------
+			If Not ColumnExists(sTableAlias, "Obj") Then
+				Create Map For sTableAlias CoordSys Earth Projection 8, 79, "m", -2, 49, 0.9996012717, 400000, -100000
+			End If
+
+			'-------------------------------------------------
+			' Turn on FastEdit to speed up the updates
+			'-------------------------------------------------
+			Set Table sTableAlias FastEdit On
+
+			'-------------------------------------------------
+			' Plot the records as points or polygons based
+			' on the maximum points precision value
+			'-------------------------------------------------
+			Dim iMaxPointSize As Integer
+			iMaxPointSize = val(sMaxPointsPrecision)
+
+			Call PlotSpatialData(sTableAlias, iMaxPointSize,
+				sEastingCol, sNorthingCol, sPrecisionCol)
+
+			'-------------------------------------------------
+			' Turn off FastEdit after updates
+			'-------------------------------------------------
+			Set Table sTableAlias FastEdit Off
+
+			'-------------------------------------------------
+			' Flag that the data is now spatial
+			'-------------------------------------------------
+			bSpatial = True
+
+		Else
+	
+			Call MyPrint("Table does not contain required columns - plotting cancelled.")
+			Note "Table does not contain required columns - plotting cancelled."
+
+		End If
+
+	End If
+
+	'-------------------------------------------------
 	' Export the table as a CSV if required
 	'-------------------------------------------------
 	If iOutputFormat = 3 Then
@@ -1019,60 +1300,65 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	End If
 
 	'-------------------------------------------------
-	' Set the symbology if a MapInfo table is required
+	' If a MapInfo table is required
 	'-------------------------------------------------
 	If iOutputFormat = 1 Then
 
 		'-------------------------------------------------
-		' If the symbology is to be set and the table is
-		' open
+		' Check if the local table is mappable (i.e.
+		' contains the 'OBJ' graphics column) and the
+		' graphics column contains spatial data
 		'-------------------------------------------------
-		If bSetSymbology = TRUE AND TableIsOpen(sTableAlias) Then
+		If TableInfo(sTableAlias, TAB_INFO_MAPPABLE)
+		And bSpatial = True Then
 
 			'-------------------------------------------------
-			' If the local table contains the GRPRECISION
-			' column (which the symbology is based on)
+			' If the symbology is to be set and the table is
+			' open
 			'-------------------------------------------------
-			If ColumnExists(sTableAlias, "GRPRECISION") Then
+			If bSetSymbology = TRUE
+			And TableIsOpen(sTableAlias) Then
 
 				'-------------------------------------------------
-				' Add an index to the precision field to speed
-				' up the symbology setting
+				' If the local table contains a GRPRECISION
+				' column (which the symbology is based on)
 				'-------------------------------------------------
-				'Create Index On sTableAlias(GRPRECISION)
 
-				'-------------------------------------------------
-				' Turn on FastEdit to speed up the updates
-				'-------------------------------------------------
-				Set Table sTableAlias FastEdit On
+				If ColumnExists(sTableAlias, "GRPRECISION") Then
 
-				'-------------------------------------------------
-				' Set the symbology for the table
-				'-------------------------------------------------
-				Call MyPrint("Setting symbology in table ...")
+					'-------------------------------------------------
+					' Add an index to the precision field to speed
+					' up the symbology setting
+					'-------------------------------------------------
+					Create Index On sTableAlias(GRPRECISION)
 
-				Dim sNodeName As String
-				sNodeName = "GiGL_Subset"
-				Call SetSymbology(sNodeName, sTableAlias)
+					'-------------------------------------------------
+					' Turn on FastEdit to speed up the updates
+					'-------------------------------------------------
+					Set Table sTableAlias FastEdit On
 
-				'-------------------------------------------------
-				' Turn off FastEdit after updates
-				'-------------------------------------------------
-				Set Table sTableAlias FastEdit Off
+					'-------------------------------------------------
+					' Set the symbology for the table
+					'-------------------------------------------------
+					Call MyPrint("Setting symbology in table ...")
 
-			Else
+					Dim sNodeName As String
+					sNodeName = "Subset"
+					Call SetSymbology(sNodeName, sTableAlias)
 
-				Call MyPrint("Table does not contain 'GRPRECISION' column. Unable to set symbology.")
+					'-------------------------------------------------
+					' Turn off FastEdit after updates
+					'-------------------------------------------------
+					Set Table sTableAlias FastEdit Off
+
+				Else
+
+					Call MyPrint("Table does not contain 'GRPRECISION' column - unable to set symbology.")
+					Note "Table does not contain 'GRPRECISION' column - unable to set symbology."
+
+				End If
 
 			End If
-
-		End If
-
-		'-------------------------------------------------
-		' Check if the local table is mappable (i.e.
-		' contains the 'OBJ' graphics column)
-		'-------------------------------------------------
-		If TableInfo(sTableAlias, TAB_INFO_MAPPABLE) Then
 
 	 		'-------------------------------------------------
 			' Add the table to the top most map window (if
@@ -1087,8 +1373,13 @@ Sub SelectSpecies (ByVal nConn As Integer,
 
 		Else
 
-			Call MyPrint("Table does not have graphic information. Unable to map layer.")
-			Note "Table does not have graphic information. Unable to map layer."
+	 		'-------------------------------------------------
+			' Opens the table in a browser window
+			'-------------------------------------------------
+			Browse * From sTableAlias
+
+			'Call MyPrint("Table does not have graphic information. Unable to map layer.")
+			'Note "Table does not have graphic information. Unable to map layer."
 
 		End If
 
@@ -1117,6 +1408,158 @@ ErrorTrap:
 	Note str$(Err()) + ": " + Error$()
 	Call MyPrint(str$(Err()) + ": " + Error$())
 	Exit Sub
+
+End Sub
+
+Sub PlotSpatialData
+	(sTableName As String,
+	iMaxPointSize As Integer,
+	EastingCol As String,
+	NorthingCol As String,
+	PrecisionCol As String)
+'***************************************************************
+'* Plot the records as points or polygons based on the
+'* maximum points precision value
+'***************************************************************
+
+	'-------------------------------------------------
+	' Select all the rows of the desired object type
+	' matching the required SQL clause
+	'-------------------------------------------------
+	Dim sCmd As String
+	sCmd = "Select " + EastingCol + ", " + NorthingCol + ", " + PrecisionCol + ", Obj, CentroidX(Obj), CentroidY(Obj) From " + sTableName + " Into NewObj"
+	Run Command (sCmd)
+
+	'-------------------------------------------------
+	' Count the number of rows selected
+	'-------------------------------------------------
+	Dim iRows As Integer
+	iRows = TableInfo(NewObj, TAB_INFO_NROWS)
+
+	Call MyPrint("Plotting " + FormatNumber$(iRows) + " rows as points or polygons")
+
+	'-------------------------------------------------
+	' If any rows were selected then set the object
+	'-------------------------------------------------
+	If iRows > 0 Then
+
+		Set Coordsys table NewObj
+
+		'-------------------------------------------------
+		' Fetch the first of the selected rows
+		'-------------------------------------------------
+		Fetch First from NewObj
+
+		'-------------------------------------------------
+		' Loop through all the selected rows setting the
+		' spatial object
+		'-------------------------------------------------
+		Dim iRow as Integer
+		iRow = 1
+		Do while iRow <= iRows
+
+			Dim X, Y, Z as Integer
+			Z = NewObj.col3
+			X = int(NewObj.col1 / Z) * Z
+			Y = int(NewObj.col2 / Z) * Z
+			'X = NewObj.col1
+			'Y = NewObj.col2
+
+			'-------------------------------------------------
+			' Create a dummy object to plot
+			'-------------------------------------------------
+			Dim oUpdateObj as Object
+			'oUpdateObj = NewObj.obj
+
+			If Z <= iMaxPointSize Then
+
+				'-------------------------------------------------
+				' Create a point in the object
+				'-------------------------------------------------
+				Create Point Into Variable oUpdateObj ( X, Y )
+
+			Else
+
+				'-------------------------------------------------
+				' Create a region in the object
+				'-------------------------------------------------
+				Dim pX(5), pY(5) As Integer
+				Dim i As Integer
+				pX(1) = X
+				pY(1) = Y
+				pX(2) = pX(1) + Z
+				pY(2) = pY(1)
+				pX(3) = pX(1) + Z
+				pY(3) = pY(1) + Z
+				pX(4) = pX(1)
+				pY(4) = pY(1) + Z
+				pX(5) = pX(1)
+				pY(5) = pY(1)
+
+				' Create an empty region object
+				Create Region Into Variable oUpdateObj 0
+
+				' Now add nodes to populate the object
+				For i = 1 to 5
+					Alter Object oUpdateObj Node Add ( pX(i), pY(i) )
+				Next
+
+			End If
+
+			' Update the object in the table
+			Update NewObj Set Obj = oUpdateObj Where RowID = iRow
+
+			'-------------------------------------------------
+			' Save the updates every 1000 rows
+			'-------------------------------------------------
+			'Dim y As Float
+			'y = (iRow / 1000)
+			'If Int(y) = y Then
+			'	sCmd = "Commit Table NewStyle"
+			'	Run Command (sCmd)
+			'End If
+
+			'-------------------------------------------------
+			' Fetch the next of the selected rows
+			'-------------------------------------------------
+			Fetch next from NewObj
+			iRow = iRow + 1
+
+		Loop
+
+		'-------------------------------------------------
+		' Save the updates
+		'-------------------------------------------------
+		Set ProgressBars Off
+
+		sCmd = "Commit Table NewObj"
+		Run Command (sCmd)
+
+		Set ProgressBars Off
+
+	End If
+
+CleanUp:
+	'-------------------------------------------------
+	' Close the temporary NewObjtable if it is
+	' already/still open in the current MapInfo session
+	'-------------------------------------------------
+	If TableIsOpen("NewObj") Then
+		Close Table NewObj
+	End If
+
+	'-------------------------------------------------
+	' Close the the Selection table if it is
+	' already/still open in the current MapInfo session
+	'-------------------------------------------------
+	If TableIsOpen("Selection") Then
+		Close Table Selection
+	End If
+
+	'-------------------------------------------------
+	' Unselect all records
+	'-------------------------------------------------
+	Run Menu command M_QUERY_UNSELECT
 
 End Sub
 
@@ -1197,21 +1640,35 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 					Do while hXMLSymbolNode
 						
 						i = i + 1
+
 						' SQL clause used to retrieve the required rows from the species table
 						Dim sClause As String
 						sClause = GetSingleNodeValue(hXMLSymbolNode, "Clause")
 
-						' Type of object
+						' Type of object (i.e. Point or Region)
 						Dim sObject As String
 						sObject = GetSingleNodeValue(hXMLSymbolNode, "Object")
 
-						' Type of style
-						Dim sType As String
-						sType = GetSingleNodeValue(hXMLSymbolNode, "Type")
+						' Styles (depending on type of object)
+						Dim sSymbol, sPen, sBrush As String
+						Dim stlSymbol As Symbol
+						Dim stlPen As Pen
+						Dim stlBrush As Brush
 
-						' Style of the symbol
-						Dim sStyle As String
-						sStyle = GetSingleNodeValue(hXMLSymbolNode, "Style")
+						'stlSymbol = ""
+						'stlPen = ""
+						'stlBrush = ""
+						Do Case sObject
+							Case "Point"
+								sSymbol = GetSingleNodeValue(hXMLSymbolNode, "Symbol")
+								stlSymbol = STLText2Symbol(sSymbol)
+							Case "Region"
+								sPen = GetSingleNodeValue(hXMLSymbolNode, "Pen")
+								stlPen = STLText2Pen(sPen)
+								sBrush = GetSingleNodeValue(hXMLSymbolNode, "Brush")
+								stlBrush = STLText2Brush(sBrush)
+							Case Else
+						End Case
 
 						'-------------------------------------------------
 						' Close the temporary NewStyle table if it is
@@ -1235,7 +1692,7 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 						Dim iRows As Integer
 						iRows = TableInfo(NewStyle, TAB_INFO_NROWS)
 
-						Call MyPrint("Setting " + sObject + " " + sType + " style for " + iRows + " rows where " + sClause)
+						Call MyPrint("Setting " + sObject + " style for " + FormatNumber$(iRows) + " rows where " + sClause)
 
 						'-------------------------------------------------
 						' If any rows were selected then set the styles
@@ -1255,15 +1712,10 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 							x = 1
 								Do while x <= iRows
 								'-------------------------------------------------
-
 								' Set the current object to update
 								'-------------------------------------------------
 								Dim oUpdateObj as Object
 								oUpdateObj = NewStyle.obj
-
-								Dim stlSymbol As Symbol
-								Dim stlPen As Pen
-								Dim stlBrush As Brush
 
 								'-------------------------------------------------
 								' Alter the object style depending on the object
@@ -1271,19 +1723,10 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 								'-------------------------------------------------
 								Do Case sObject
 									Case "Point"
-										If sType = "Symbol" Then
-											stlSymbol = STLText2Symbol(sStyle)
-											Alter Object oUpdateObj Info OBJ_INFO_SYMBOL, stlSymbol
-										End If
+										Alter Object oUpdateObj Info OBJ_INFO_SYMBOL, stlSymbol
 									Case "Region"
-										If sType = "Pen" Then
-											stlPen = STLText2Pen(sStyle)
-											Alter Object oUpdateObj Info OBJ_INFO_PEN, stlPen
-										End If
-										If sType = "Brush" Then
-											stlBrush = STLText2Brush(sStyle)
-											Alter Object oUpdateObj Info OBJ_INFO_BRUSH, stlBrush
-										End If
+										Alter Object oUpdateObj Info OBJ_INFO_PEN, stlPen
+										Alter Object oUpdateObj Info OBJ_INFO_BRUSH, stlBrush
 									Case Else
 								End Case
 
@@ -1385,21 +1828,21 @@ Sub AboutBox
 '***************************************************************
 
 	Dialog
-		Title "About Data Selector 1.02"
+		Title "About Data Selector 1.03"
 		Width 230
 		Height 115
 
 	Control StaticText
-		Title "This program will select GiGL species records from SQL"
+		Title "This program will select records from a SQL Server table"
 		Position 10,10
 	Control StaticText
-		Title "Server based on the SQL where clause entered by the user"
+		Title "based on the SQL statement entered by the user and will"
 		Position 10,20
 	Control StaticText
-		Title "and will create a local MapInfo .Tab file, ESRI .Shp file"
+		Title "create a local MapInfo (.Tab) file, ESRI (.shp) file or"
 		Position 10,30
 	Control StaticText
-		Title "or Comma-Separated .CSV file."
+		Title "Comma-Separated Text (.csv) file."
 		Position 10,40
 	Control StaticText
 		Title "Created by Andy Foy Consulting."

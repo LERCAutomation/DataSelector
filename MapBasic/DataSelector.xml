@@ -70,25 +70,33 @@ as a spreadsheet.
 	<value>YES</value>
   </DefaultSetSymbology>
 
+  <!-- Whether the SQL database tables are spatially enabled -->
+  <TablesSpatiallyEnabled>
+	<value>No</value>
+  </TablesSpatiallyEnabled>
+
+  <!-- The table columns used for creating spatial data -->
+  <SpatialColumns>
+	<Easting>
+		<value>Eastings</value>
+	</Easting>
+	<Northing>
+		<value>Northings</value>
+	</Northing>
+	<Precision>
+		<value>GRPrecision</value>
+	</Precision>
+  </SpatialColumns>
+
+  <!-- The default maximum precision for plotting polygons as points -->
+  <DefaultPointsPrecision>
+	<value>100</value>
+  </DefaultPointsPrecision>
   <!-- The table columns and SQL where clauses used to select all the required columns for
 	the species extract tables -->
   <SpeciesTables>
-	<GiGL_Subset>
+	<Subset>
 		<Symbology>
-			<Symbol>
-				<Clause>
-					<Value>GRPRECISION = 100</Value>
-				</Clause>
-				<Object>
-					<Value>Point</Value>
-				</Object>
-				<Type>
-					<Value>Symbol</Value>
-				</Type>
-				<Style>
-					<Value>2,64,255,14,MapInfo Dispersed Group,0,0</Value>
-				</Style>
-			</Symbol>
 			<Symbol>
 				<Clause>
 					<Value>GRPRECISION &lt;= 10</Value>
@@ -96,54 +104,62 @@ as a spreadsheet.
 				<Object>
 					<Value>Point</Value>
 				</Object>
-				<Type>
-					<Value>Symbol</Value>
-				</Type>
-				<Style>
+				<Symbol>
 					<Value>2,65,255,12,MapInfo Dispersed Group,0,0</Value>
-				</Style>
+				</Symbol>
 			</Symbol>
 			<Symbol>
 				<Clause>
-					<Value>GRPRECISION = 1000</Value>
+					<Value>GRPRECISION = 100</Value>
+				</Clause>
+				<Object>
+					<Value>Point</Value>
+				</Object>
+				<Symbol>
+					<Value>2,64,255,14,MapInfo Dispersed Group,0,0</Value>
+				</Symbol>
+			</Symbol>
+			<Symbol>
+				<Clause>
+					<Value>GRPRECISION &lt;= 10</Value>
 				</Clause>
 				<Object>
 					<Value>Region</Value>
 				</Object>
-				<Type>
-					<Value>Pen</Value>
-				</Type>
-				<Style>
+				<Pen>
 					<Value>2,2,10526880</Value>
-				</Style>
-			</Symbol>
-			<Symbol>
-				<Clause>
-					<Value>GRPRECISION = 1000</Value>
-				</Clause>
-				<Object>
-					<Value>Region</Value>
-				</Object>
-				<Type>
-					<Value>Brush</Value>
-				</Type>
-				<Style>
+				</Pen>
+				<Brush>
 					<Value>5,10526880</Value>
-				</Style>
+				</Brush>
 			</Symbol>
 			<Symbol>
 				<Clause>
-					<Value>GRPRECISION = 2000</Value>
+					<Value>GRPRECISION = 100</Value>
 				</Clause>
 				<Object>
 					<Value>Region</Value>
 				</Object>
-				<Type>
-					<Value>Pen</Value>
-				</Type>
-				<Style>
+				<Pen>
 					<Value>2,2,10526880</Value>
-				</Style>
+				</Pen>
+				<Brush>
+					<Value>5,10526880</Value>
+				</Brush>
+			</Symbol>
+			<Symbol>
+				<Clause>
+					<Value>GRPRECISION = 1000</Value>
+				</Clause>
+				<Object>
+					<Value>Region</Value>
+				</Object>
+				<Pen>
+					<Value>2,2,10526880</Value>
+				</Pen>
+				<Brush>
+					<Value>5,10526880</Value>
+				</Brush>
 			</Symbol>
 			<Symbol>
 				<Clause>
@@ -152,12 +168,12 @@ as a spreadsheet.
 				<Object>
 					<Value>Region</Value>
 				</Object>
-				<Type>
-					<Value>Brush</Value>
-				</Type>
-				<Style>
+				<Pen>
+					<Value>2,2,10526880</Value>
+				</Pen>
+				<Brush>
 					<Value>6,10526880</Value>
-				</Style>
+				</Brush>
 			</Symbol>
 			<Symbol>
 				<Clause>
@@ -166,29 +182,15 @@ as a spreadsheet.
 				<Object>
 					<Value>Region</Value>
 				</Object>
-				<Type>
-					<Value>Pen</Value>
-				</Type>
-				<Style>
+				<Pen>
 					<Value>2,2,10526880</Value>
-				</Style>
-			</Symbol>
-			<Symbol>
-				<Clause>
-					<Value>GRPRECISION = 10000</Value>
-				</Clause>
-				<Object>
-					<Value>Region</Value>
-				</Object>
-				<Type>
-					<Value>Brush</Value>
-				</Type>
-				<Style>
+				</Pen>
+				<Brush>
 					<Value>1,10526880</Value>
-				</Style>
+				</Brush>
 			</Symbol>
 		</Symbology>
-	</GiGL_Subset>
+	</Subset>
   </SpeciesTables>
 
 </DataSelector>

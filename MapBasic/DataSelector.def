@@ -20,13 +20,13 @@
 '* along with DataExtractor.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector.def v1.02
+'* DataSelector.def v1.03
 '*
 '* Defines global variables and declares subroutines and functions.
 '*
 '*
 '* Created:		Andy Foy - June 2015
-'* Last revised:	Andy Foy - June 2015
+'* Last revised:	Andy Foy - Sept 2015
 '***************************************************************
 
 Include "MapBasic.def"
@@ -77,6 +77,8 @@ Define MIXmlNamedNodeMap Integer
 Define MIXMLSchemaCollection Integer
 Define MIXML_LIB_NAME "GmlXlat.dll"
 Define MIWEBSERVICES_LIB_NAME "GmlXlat.dll"
+'Define MIXML_LIB_NAME "MapInfo.XmlUtil.dll"
+'Define MIWEBSERVICES_LIB_NAME "MapInfo.XmlUtil.dll"
 
 '-------------------------------------------------
 ' Declare the subroutines
@@ -93,6 +95,8 @@ Declare Sub SelectSpecies
 	(ByVal nConn As Integer,
 	sColumnNames As String,
 	sWhereClause As String,
+	sGroupClause As String,
+	sOrderClause As String,
 	sOutputPath As String,
 	sShortName As String,
 	sTableName As String)
@@ -114,6 +118,12 @@ Declare Sub TranslateToShapefile
 	sTempName As String,
 	sLocalPath As String,
 	sLocalName As String)
+Declare Sub PlotSpatialData
+	(sTableName As String,
+	iMaxPointSize As Integer,
+	EastingCol As String,
+	NorthingCol As String,
+	PrecisionCol As String)
 
 Declare Sub MIXmlDocumentDestroy Lib MIXML_LIB_NAME
 	Alias "MIXmlDocumentDestroy" (
@@ -253,6 +263,11 @@ Global sDefaultSchema As String
 Global sTableListSQL As String
 Global sLogFileName As String
 Global sDefaultSetSymbology As String
+Global bSpatialTables As Logical
+Global sDefaultPointPrecision As String
+Global sEastingCol As String
+Global sNorthingCol As String
+Global sPrecisionCol As String
 
 Global aSQLTables(99) As String
 'Global aSppNodes(99) As String
@@ -269,4 +284,8 @@ Global iOutputFormat As Integer
 Global sOutputFormat As String
 Global sOutputFile As String
 Global sWhereClause As String
+Global sGroupClause As String
+Global sOrderClause As String
 Global sColumnNames As String
+Global bPlotSpatialData As Logical
+Global sMaxPointsPrecision As String
