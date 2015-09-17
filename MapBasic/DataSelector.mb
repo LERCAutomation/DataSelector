@@ -22,10 +22,10 @@
 '***************************************************************
 '* DataSelector v1.03
 '*
-'* Creates a dialog window which lists the SQL species tables
+'* Creates a dialog window which lists the SQL tables
 '* in the remote SQL Server and allows the user to enter a
 '* where clause and group by and order by text to select a
-'* subset of the species records. It will then create a
+'* subset of the SQL records. It will then create a
 '* MapInfo .tab file, ArcGIS .shp file or Text .csv file
 '* of the selected records.
 '*
@@ -146,7 +146,7 @@ Sub GetDefaultValues
 					' Default database schema to use in the remote SQL database
 					sDefaultSchema = GetSingleNodeValue(hXMLNode, "DatabaseSchema")
 
-					' SQL used to list the names of species tables in the remote SQL database
+					' SQL used to list the names of SQL tables in the remote SQL database
 					sTableListSQL = GetSingleNodeValue(hXMLNode, "TableListSQL")
 
 					' Maximum number of records to be downloaded at one time
@@ -158,21 +158,24 @@ Sub GetDefaultValues
 					' Default setting for setting the symbology
 					sDefaultSetSymbology = GetSingleNodeValue(hXMLNode, "DefaultSetSymbology")
 
-					' Whether the SQL database tables are spatially enabled
-					Dim sTablesSpatial As String
-					sTablesSpatial = GetSingleNodeValue(hXMLNode, "TablesSpatiallyEnabled")
-					If UCase$(sTablesSpatial) = "Y" OR UCase$(sTablesSpatial) = "YES" Then
-						bSpatialTables = True
+					' Whether the SQL database tables can be spatially plotted
+					Dim sEnableSpatial As String
+					sEnableSpatial = GetSingleNodeValue(hXMLNode, "EnableSpatialPlotting")
+					If UCase$(sEnableSpatial) = "Y" OR UCase$(sEnableSpatial) = "YES" Then
+						bEnablePlotting = True
 					Else
-						bSpatialTables = False
+						bEnablePlotting = False
 					End If
 
 					'-------------------------------------------------
-					' If the tables are not spatially enabled load
-					' the spatial and precision column names used
+					' If spatial plotting is enabled then get the
+					' default spatial and precision column names used
 					' to plot the data spatially
 					'-------------------------------------------------
-					If bSpatialTables = False Then
+					If bEnablePlotting = True Then
+
+						' Coordinate system to be used for mapping
+						sCoordSys = GetSingleNodeValue(hXMLNode, "CoordinateSystem")
 
 						' Default setting for setting the symbology
 						sDefaultPointPrecision = GetSingleNodeValue(hXMLNode, "DefaultPointsPrecision")
@@ -180,17 +183,17 @@ Sub GetDefaultValues
 						'-------------------------------------------------
 						' Get a handle on the DataExtractor node
 						'-------------------------------------------------
-						hXMLSubNode = MIXmlSelectSingleNode(hXMLNode, "SpatialColumns")
+						hXMLSubNode = MIXmlSelectSingleNode(hXMLNode, "DefaultSpatialColumns")
 			          If hXMLSubNode Then
 	
-							' Column name for the eastings value
-							sEastingCol = GetSingleNodeValue(hXMLSubNode, "Easting")
+							' Default column name for the eastings value
+							sXColumn = GetSingleNodeValue(hXMLSubNode, "XColumn")
 
-							' Column name for the northings value
-							sNorthingCol = GetSingleNodeValue(hXMLSubNode, "Northing")
+							' Default column name for the northings value
+							sYColumn = GetSingleNodeValue(hXMLSubNode, "YColumn")
 
-							' Column name for the precision value
-							sPrecisionCol = GetSingleNodeValue(hXMLSubNode, "Precision")
+							' Default column name for the precision value
+							sSizeColumn = GetSingleNodeValue(hXMLSubNode, "SizeColumn")
 
 						End If
 
@@ -248,7 +251,7 @@ Sub OpenDialog
 	'-------------------------------------------------
 	Dialog
 		Title "Data Extractor"
-		Width 300
+		Width 320
 		Height 310
 		Position 50,70
 		Calling DialogSetup
@@ -306,17 +309,18 @@ Sub OpenDialog
 		'Into sOrderClause
 
 	'-------------------------------------------------
-	' Add a SQL species table listbox
+	' Add a SQL table listbox
 	'-------------------------------------------------
 	Control StaticText
-		Title "SQL Species Tables:"
+		Title "SQL Tables:"
 		Position 190,10
 	Control ListBox
 		ID 5
 		Title ""
 		Position 190, 20
 		Height 60
-		Width 100
+		Width 120
+		Calling SetSpatialColumns
 
 	'-------------------------------------------------
 	' Add a radio group box for the output format
@@ -324,10 +328,11 @@ Sub OpenDialog
 	Control StaticText
 		Title "Output File Format:"
 		Position 190,90
-	Control RadioGroup
+	Control PopupMenu
 		ID 6
 		Title "MapInfo (.tab) file;ESRI (.shp) file;Comma-Separated (.csv) file"
-		Position 190,105
+		Position 190,100
+		Width 120
 		Value 1
 		'Into iOutputFormat
 		Calling SetFileFormat
@@ -338,7 +343,7 @@ Sub OpenDialog
 	Control CheckBox
 		ID 7
 		Title "Set default symbology?"
-		Position 190,160
+		Position 190,125
 		Value FALSE
 		'Into bSetSymbology
 
@@ -372,14 +377,25 @@ Sub OpenDialog
 	' Add Ok and Cancel buttons
 	'-------------------------------------------------
 	Control CancelButton
-		Position 205,290
+		Position 225,290
 		Width 40
 	Control Button
 		ID 11
 		Title "Ok"
-		Position 250,290
+		Position 270,290
 		Width 40
 		Calling CheckSelection
+
+	'-------------------------------------------------
+	' Add a group box for non-spatial data
+	'-------------------------------------------------
+	Control GroupBox
+		ID 20
+		Title "Non-spatial data"
+		Position 185,145
+		Height 125
+		Width 125
+		Hide
 
 	'-------------------------------------------------
 	' Add a checkbox for plotting spatially
@@ -387,24 +403,70 @@ Sub OpenDialog
 	Control CheckBox
 		ID 12
 		Title "Plot data spatially?"
-		Position 190,210
+		Position 190,160
 		Value TRUE
 		Hide
 		'Into bSetSymbology
+		Calling SetPlotData
 
 	'-------------------------------------------------
-	' Add an order by textbox
+	' Add a popup menu for the X Column
 	'-------------------------------------------------
 	Control StaticText
-		ID 13
+		ID 21
+		Title "XColumn:"
+		Position 190,180
+		Hide
+	Control PopUpMenu
+		ID 22
+		Position 235,178
+		Width 70
+		Title ""
+		Hide
+
+	'-------------------------------------------------
+	' Add a popup menu for the Y Column
+	'-------------------------------------------------
+	Control StaticText
+		ID 23
+		Title "YColumn:"
+		Position 190,200
+		Hide
+	Control PopUpMenu
+		ID 24
+		Position 235,198
+		Width 70
+		Title ""
+		Hide
+
+	'-------------------------------------------------
+	' Add a popup menu for the Size Column
+	'-------------------------------------------------
+	Control StaticText
+		ID 25
+		Title "Size Column:"
+		Position 190,220
+		Hide
+	Control PopUpMenu
+		ID 26
+		Position 235,218
+		Width 70
+		Title ""
+		Hide
+
+	'-------------------------------------------------
+	' Add a maximum points precision textbox
+	'-------------------------------------------------
+	Control StaticText
+		ID 27
 		Title "Max Points Precision:"
-		Position 190,230
+		Position 190,250
 		Hide
 	Control EditText
-		ID 14
-		Position 190,240
-		Height 15
-		Width 30
+		ID 28
+		Position 265,248
+		Height 14
+		Width 35
 		Hide
 		'Into sOrderClause
 
@@ -449,7 +511,7 @@ Sub DialogSetup
 	OnError Goto 0
 
 	'-------------------------------------------------
-	' Query all the species tables in the database
+	' Query all the tables in the database
 	'-------------------------------------------------
 	Dim nStmt as Integer
 	nStmt = Server_Execute(nConn, sTableListSQL)
@@ -490,18 +552,22 @@ Sub DialogSetup
 	' of tables
 	'-------------------------------------------------
 	Alter Control 5 Title FROM Variable aSQLTables
-	Alter Control 5 Value 1
+	'Alter Control 5 Value 1
 
 	'-------------------------------------------------
 	' Show or hide the spatial controls
 	'-------------------------------------------------
-	If bSpatialTables = False
-	And sEastingCol <> ""
-	And sNorthingCol <> ""
-	And sPrecisionCol <> "" Then
+	If bEnablePlotting = True Then
 		Alter Control 12 Show
-		Alter Control 13 Show
-		Alter Control 14 Show
+		Alter Control 20 Show
+		Alter Control 21 Show
+		Alter Control 22 Show
+		Alter Control 23 Show
+		Alter Control 24 Show
+		Alter Control 25 Show
+		Alter Control 26 Show
+		Alter Control 27 Show
+		Alter Control 28 Show
 	End If
 
 SetDefaults:
@@ -529,8 +595,8 @@ SetDefaults:
 	'-------------------------------------------------
 	' Set the detault maximum point precision
 	'-------------------------------------------------
-	If bSpatialTables = False Then
-		Alter Control 14 Value Str$(val(sDefaultPointPrecision))
+	If bEnablePlotting = True Then
+		Alter Control 28 Value Str$(val(sDefaultPointPrecision))
 	End If
 
 Exit Sub
@@ -754,18 +820,21 @@ Sub CheckSelection
 	sWhereClause = ReadControlValue(2)
 	sGroupClause = ReadControlValue(3)
 	sOrderClause = ReadControlValue(4)
-	iSppTable = ReadControlValue(5)
+	iSQLTable = ReadControlValue(5)
 	iOutputFormat = ReadControlValue(6)
 	bSetSymbology = ReadControlValue(7)
 	bClearLog = ReadControlValue(8)
 	bPlotSpatialData = ReadControlValue(12)
-	sMaxPointsPrecision = ReadControlValue(14)
+	sMaxPointsPrecision = ReadControlValue(28)
+	iXColumn = ReadControlValue(22)
+	iYColumn = ReadControlValue(24)
+	iSizeColumn = ReadControlValue(26)
 
 	'-------------------------------------------------
 	' Check if the user has selected at least one table
 	' from the species table list
 	'-------------------------------------------------
-	if iSppTable = 0 then
+	if iSQLTable = 0 then
 		Note "No table has been selected!"
 		Exit Sub
 	End If
@@ -840,6 +909,105 @@ Sub CheckSelection
 
 End Sub
 
+Sub SetSpatialColumns
+'***************************************************************
+'* Set the spatial column popup lists based on the selected
+'* table name.
+'***************************************************************
+
+	'-------------------------------------------------
+	' Check what format the user has selected for
+	' the SQL table.
+	'-------------------------------------------------
+	Dim iSQLTable As Integer
+	iSQLTable = ReadControlValue(5)
+
+	'-------------------------------------------------
+	' Check if the user has selected at least one table
+	' from the table list
+	'-------------------------------------------------
+	If iSQLTable = 0 then
+		Alter Control 22 Title ""
+		Alter Control 24 Title ""
+		Alter Control 26 Title ""
+		Exit Sub
+	End If
+
+	Dim sTableName As String
+	sTableName = aSQLTables(iSQLTable)
+
+	'-------------------------------------------------
+	' Query all the tables in the database
+	'-------------------------------------------------
+	Dim nStmt as Integer
+	Dim sColumnListSQL As String
+	sColumnListSQL = "Select column_name From information_schema.columns Where table_name = '" + sTableName + "' Order By ORDINAL_POSITION"
+	nStmt = Server_Execute(nConn, sColumnListSQL)
+
+	'-------------------------------------------------
+	' Bind to the 1st column of the results
+	'-------------------------------------------------
+	Dim aSQLColumn As String
+	Dim iStatus As Integer
+	Server nStmt Bind Column 1 To aSQLColumn, iStatus
+	Server nStmt Fetch Next
+
+	'-------------------------------------------------
+	' Loop through all the columns matching the
+	' SQL criteria and add them to the Species Tables list
+	'-------------------------------------------------
+	Dim i as integer
+	i = 1
+	While Not Server_Eot(nStmt)
+
+		'-------------------------------------------------
+		' Concatenate all the Species tables into an array
+		'-------------------------------------------------
+		Redim aSQLColumns(i)
+		aSQLColumns(i) = aSQLColumn
+		Server nStmt Fetch Next
+		i = i + 1
+
+	Wend
+
+	'-------------------------------------------------
+	' Close the query results
+	'-------------------------------------------------
+	Server nStmt Close
+
+	'-------------------------------------------------
+	' Update the spatial column popup lists to
+	' show the column names
+	'-------------------------------------------------
+	If bEnablePlotting = True then
+		Alter Control 22 Title FROM Variable aSQLColumns
+		Alter Control 24 Title FROM Variable aSQLColumns
+		Alter Control 26 Title FROM Variable aSQLColumns
+	End If
+
+	'-------------------------------------------------
+	' Try and set the default values
+	'-------------------------------------------------
+	Dim j as integer
+	j = 1
+	Do While j < i
+		If aSQLColumns(j) = sXColumn Then
+			Alter Control 22 Value j
+		End If
+
+		If aSQLColumns(j) = sYColumn Then
+			Alter Control 24 Value j
+		End If
+
+		If aSQLColumns(j) = sSizeColumn Then
+			Alter Control 26 Value j
+		End If
+
+		j = j + 1
+	Loop
+
+End Sub
+
 Sub SetFileFormat
 '***************************************************************
 '* Show or hide the set symbology checkbox depending upon the
@@ -847,15 +1015,84 @@ Sub SetFileFormat
 '***************************************************************
 
 	'-------------------------------------------------
-	' Check if the user has selected at least one table
-	' from the species table list
+	' Check what format the user has selected for
+	' the output file.
 	'-------------------------------------------------
 	Dim iFileFormat As Integer
 	iFileFormat = ReadControlValue(6)
+
+	'-------------------------------------------------
+	' If a .tab file is selected then show the
+	' set default symbology checkbox
+	'-------------------------------------------------
 	If iFileFormat = 1 then
 		Alter Control 7 Show
 	Else
 		Alter Control 7 Hide
+	End If
+
+	'-------------------------------------------------
+	' If a .tab file or .shp file is selected then
+	' show the plot data spatially
+	'-------------------------------------------------
+	If iFileFormat = 1 Or iFileFormat = 2 then
+		If bEnablePlotting = True then
+			Alter Control 12 Show
+			Alter Control 20 Show
+			Alter Control 21 Show
+			Alter Control 22 Show
+			Alter Control 23 Show
+			Alter Control 24 Show
+			Alter Control 25 Show
+			Alter Control 26 Show
+			Alter Control 27 Show
+			Alter Control 28 Show
+		Else
+			Alter Control 12 Hide
+			Alter Control 20 Hide
+			Alter Control 21 Hide
+			Alter Control 22 Hide
+			Alter Control 23 Hide
+			Alter Control 24 Hide
+			Alter Control 25 Hide
+			Alter Control 26 Hide
+			Alter Control 27 Hide
+			Alter Control 28 Hide
+		End If
+	End If
+
+End Sub
+
+Sub SetPlotData
+'***************************************************************
+'* Show or hide the max points precision textbox depending
+'* if the plot data spatially checkbox value.
+'***************************************************************
+
+	'-------------------------------------------------
+	' Check if the user has ticked the plot data
+	' spatially checkbox.
+	'-------------------------------------------------
+	Dim iPlotData As Integer
+	iPlotData = ReadControlValue(12)
+	If iPlotData = 1 then
+		Alter Control 21 Show
+		Alter Control 22 Show
+		Alter Control 23 Show
+		Alter Control 24 Show
+		Alter Control 25 Show
+		Alter Control 26 Show
+		Alter Control 27 Show
+		Alter Control 28 Show
+	Else
+		Alter Control 21 Hide
+		Alter Control 22 Hide
+		Alter Control 23 Hide
+		Alter Control 24 Hide
+		Alter Control 25 Hide
+		Alter Control 26 Hide
+		Alter Control 27 Hide
+		Alter Control 28 Hide
 	End If
 
 End Sub
@@ -866,7 +1103,7 @@ Sub ProcessSelection
 '***************************************************************
 
 	Dim sTableName As String
-	sTableName = aSQLTables(iSppTable)
+	sTableName = aSQLTables(iSQLTable)
 
 	Call MyPrint ("Table Name = '" + sTableName + "'")
 
@@ -952,6 +1189,8 @@ Sub SelectSpecies (ByVal nConn As Integer,
 '* attributes meet the where clause also passed
 '* in the call.
 '*************************************************
+
+	Dim sCmd As String
 
 	OnError Goto ErrorTrap
 
@@ -1079,14 +1318,14 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	sTableAlias = TableInfo(0, TAB_INFO_NAME)
 
 	'-------------------------------------------------
-	' Check if the table contains an Ocj column
+	' Check if the table contains an Obj column
 	' which indicates if there is any spatial data
 	'-------------------------------------------------
-	Dim bSpatial As Logical
+	Dim bSpatialData As Logical
 	If ColumnExists(sTableAlias, "Obj") Then
-		bSpatial = True
+		bSpatialData = True
 	Else
-		bSpatial = False
+		bSpatialData = False
 	End If
 
 	'-------------------------------------------------
@@ -1114,11 +1353,24 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	End If
 
 	'-------------------------------------------------
-	' Check if the total data size will be exceeded
+	' Display the total data size
 	'-------------------------------------------------
 	Dim iDataSize As Integer
 	iDataSize = (iRowLength * iRecTotal) / 1024
 
+	If iDataSize > (1024 * 1024) Then
+		Call MyPrint("Total data size = " + FormatNumber$(iDataSize) + " Kb (" + FormatNumber$(Round(iDataSize / (1024 * 1024), 0.01)) + " Gb)")
+	Else
+		If iDataSize > 1024 Then
+			Call MyPrint("Total data size = " + FormatNumber$(iDataSize) + " Kb (" + FormatNumber$(Round(iDataSize / 1024, 0.01)) + " Mb)")
+		Else
+			Call MyPrint("Total data size = " + FormatNumber$(iDataSize) + " Kb")
+		End If
+	End If
+
+	'-------------------------------------------------
+	' Check if the total data size will be exceeded
+	'-------------------------------------------------
 	If iDataSize > (2*1024*1024) Then
 
 		Call MyPrint("Total data size exceeds maximum of 2 Gb - selection cancelled.")
@@ -1134,8 +1386,6 @@ Sub SelectSpecies (ByVal nConn As Integer,
 
 		Exit Sub
 
-	Else
-		Call MyPrint("Total data size = " + FormatNumber$(iDataSize) + " Kb")
 	End If
 
 	'-------------------------------------------------
@@ -1221,24 +1471,45 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	Set ProgressBars On
 
 	'-------------------------------------------------
+	' Export the table as a CSV if required
+	'-------------------------------------------------
+	If iOutputFormat = 3 Then
+		Call MyPrint("Exporting as a CSV ...")
+		Export sTableAlias
+			Into sOutputPath + sOutputName + ".csv"
+			Type "CSV"
+			Titles
+			Overwrite
+	End If
+
+	'-------------------------------------------------
 	' If the data is to be plotted spatially
 	'-------------------------------------------------
 	If bPlotSpatialData = True Then
 
 		'-------------------------------------------------
+		' The the names of the spatial columns to use
+		'-------------------------------------------------
+		Dim sXCol As String, sYCol As String, sSizeCol As String
+		sXCol = aSQLColumns(iXColumn)
+		sYCol = aSQLColumns(iYColumn)
+		sSizeCol = aSQLColumns(iSizeColumn)
+
+		'-------------------------------------------------
 		' Check the local table contains the required
 		' columns
 		'-------------------------------------------------
-		If ColumnExists(sTableAlias, sEastingCol) And
-		   ColumnExists(sTableAlias, sNorthingCol) And
-		   ColumnExists(sTableAlias, sPrecisionCol) Then
+		If ColumnExists(sTableAlias, sXCol) And
+		   ColumnExists(sTableAlias, sYCol) And
+		   ColumnExists(sTableAlias, sSizeCol) Then
 
 			'-------------------------------------------------
 			' If the local table doesn't contain an Obj
 			' column then add the column
 			'-------------------------------------------------
 			If Not ColumnExists(sTableAlias, "Obj") Then
-				Create Map For sTableAlias CoordSys Earth Projection 8, 79, "m", -2, 49, 0.9996012717, 400000, -100000
+				sCmd = "Create Map For " + sTableAlias + " CoordSys " + sCoordSys
+				Run Command (sCmd)
 			End If
 
 			'-------------------------------------------------
@@ -1254,7 +1525,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 			iMaxPointSize = val(sMaxPointsPrecision)
 
 			Call PlotSpatialData(sTableAlias, iMaxPointSize,
-				sEastingCol, sNorthingCol, sPrecisionCol)
+				sXCol, sYCol, sSizeCol)
 
 			'-------------------------------------------------
 			' Turn off FastEdit after updates
@@ -1264,7 +1535,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 			'-------------------------------------------------
 			' Flag that the data is now spatial
 			'-------------------------------------------------
-			bSpatial = True
+			bSpatialData = True
 
 		Else
 	
@@ -1273,18 +1544,6 @@ Sub SelectSpecies (ByVal nConn As Integer,
 
 		End If
 
-	End If
-
-	'-------------------------------------------------
-	' Export the table as a CSV if required
-	'-------------------------------------------------
-	If iOutputFormat = 3 Then
-		Call MyPrint("Exporting as a CSV ...")
-		Export sTableAlias
-			Into sOutputPath + sOutputName + ".csv"
-			Type "CSV"
-			Titles
-			Overwrite
 	End If
 
 	'-------------------------------------------------
@@ -1310,7 +1569,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 		' graphics column contains spatial data
 		'-------------------------------------------------
 		If TableInfo(sTableAlias, TAB_INFO_MAPPABLE)
-		And bSpatial = True Then
+		And bSpatialData = True Then
 
 			'-------------------------------------------------
 			' If the symbology is to be set and the table is
@@ -1318,6 +1577,10 @@ Sub SelectSpecies (ByVal nConn As Integer,
 			'-------------------------------------------------
 			If bSetSymbology = TRUE
 			And TableIsOpen(sTableAlias) Then
+
+				'Dim sCmd As String
+				'sCmd = "Open Table " + Chr$(34) + sOutputPath + sOutputName + Chr$(34) + " As " + sTableAlias
+				'Run Command (sCmd)
 
 				'-------------------------------------------------
 				' If the local table contains a GRPRECISION
@@ -1330,7 +1593,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 					' Add an index to the precision field to speed
 					' up the symbology setting
 					'-------------------------------------------------
-					Create Index On sTableAlias(GRPRECISION)
+					'Create Index On sTableAlias(GRPRECISION)
 
 					'-------------------------------------------------
 					' Turn on FastEdit to speed up the updates
@@ -1443,6 +1706,9 @@ Sub PlotSpatialData
 	'-------------------------------------------------
 	If iRows > 0 Then
 
+		'-------------------------------------------------
+		' Set the coordinate system to that of the table
+		'-------------------------------------------------
 		Set Coordsys table NewObj
 
 		'-------------------------------------------------
@@ -1462,14 +1728,11 @@ Sub PlotSpatialData
 			Z = NewObj.col3
 			X = int(NewObj.col1 / Z) * Z
 			Y = int(NewObj.col2 / Z) * Z
-			'X = NewObj.col1
-			'Y = NewObj.col2
 
 			'-------------------------------------------------
 			' Create a dummy object to plot
 			'-------------------------------------------------
 			Dim oUpdateObj as Object
-			'oUpdateObj = NewObj.obj
 
 			If Z <= iMaxPointSize Then
 
@@ -1496,28 +1759,24 @@ Sub PlotSpatialData
 				pX(5) = pX(1)
 				pY(5) = pY(1)
 
+				'-------------------------------------------------
 				' Create an empty region object
+				'-------------------------------------------------
 				Create Region Into Variable oUpdateObj 0
 
+				'-------------------------------------------------
 				' Now add nodes to populate the object
+				'-------------------------------------------------
 				For i = 1 to 5
 					Alter Object oUpdateObj Node Add ( pX(i), pY(i) )
 				Next
 
 			End If
 
+			'-------------------------------------------------
 			' Update the object in the table
+			'-------------------------------------------------
 			Update NewObj Set Obj = oUpdateObj Where RowID = iRow
-
-			'-------------------------------------------------
-			' Save the updates every 1000 rows
-			'-------------------------------------------------
-			'Dim y As Float
-			'y = (iRow / 1000)
-			'If Int(y) = y Then
-			'	sCmd = "Commit Table NewStyle"
-			'	Run Command (sCmd)
-			'End If
 
 			'-------------------------------------------------
 			' Fetch the next of the selected rows
@@ -1708,9 +1967,10 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 							' Loop through all the selected rows setting the
 							' symbology style
 							'-------------------------------------------------
-							Dim x as Integer
-							x = 1
-								Do while x <= iRows
+							Dim iRow as Integer
+							iRow = 1
+							Do while iRow <= iRows
+
 								'-------------------------------------------------
 								' Set the current object to update
 								'-------------------------------------------------
@@ -1730,23 +1990,16 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 									Case Else
 								End Case
 
-								Update NewStyle Set Obj = oUpdateObj Where RowID = x
-
 								'-------------------------------------------------
-								' Save the updates every 1000 rows
+								' Update the row
 								'-------------------------------------------------
-								'Dim y As Float
-								'y = (x / 1000)
-								'If Int(y) = y Then
-								'	sCmd = "Commit Table NewStyle"
-								'	Run Command (sCmd)
-								'End If
+								Update NewStyle Set Obj = oUpdateObj Where RowID = iRow
 
 								'-------------------------------------------------
 								' Fetch the next of the selected rows
 								'-------------------------------------------------
 								Fetch next from NewStyle
-								x = x + 1
+								iRow = iRow + 1
 
 							Loop
 
@@ -1762,8 +2015,12 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 					'-------------------------------------------------
 					' Save the updates
 					'-------------------------------------------------
+					Set ProgressBars Off
+
 					sCmd = "Commit Table NewStyle"
 					Run Command (sCmd)
+
+					Set ProgressBars On
 
 				End If
 

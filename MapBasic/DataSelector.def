@@ -90,7 +90,9 @@ Declare Sub DialogSetup
 Declare Sub SaveQuery
 Declare Sub LoadQuery
 Declare Sub CheckSelection
+Declare Sub SetSpatialColumns
 Declare Sub SetFileFormat
+Declare Sub SetPlotData
 Declare Sub SelectSpecies
 	(ByVal nConn As Integer,
 	sColumnNames As String,
@@ -263,19 +265,24 @@ Global sDefaultSchema As String
 Global sTableListSQL As String
 Global sLogFileName As String
 Global sDefaultSetSymbology As String
-Global bSpatialTables As Logical
+Global bEnablePlotting As Logical
+Global sCoordSys As String
 Global sDefaultPointPrecision As String
-Global sEastingCol As String
-Global sNorthingCol As String
-Global sPrecisionCol As String
+Global sXColumn As String
+Global sYColumn As String
+Global sSizeColumn As String
 
 Global aSQLTables(99) As String
+Global aSQLColumns(99) As String
 'Global aSppNodes(99) As String
 'Global aSppTables(99) As String
 
 Global iExtractTot As Integer
 Global iExtractCnt As Integer
-Global iSppTable As Integer
+Global iSQLTable As Integer
+Global iXColumn As Integer
+Global iYColumn As Integer
+Global iSizeColumn As Integer
 Global nConn As Integer
 Global iRecMax As Integer
 Global bClearLog As Logical
