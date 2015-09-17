@@ -159,6 +159,13 @@ Declare Function GetNodeName(
 	ByVal hNode As MIXmlNode) As String
 Declare Function GetNodeAttribute(
 	ByVal hNode As MIXmlNode) As String
+Declare Function SetStylePoint(
+	ByVal oObj As Object,
+	ByVal stlSymbol As Symbol) As Object
+Declare Function SetStylePolygon(
+	ByVal oObj As Object,
+	ByVal stlPen As Pen,
+	ByVal stlBrush As Brush) As Object
 
 Declare Function CreateDirectory Lib "kernel32"
 	Alias "CreateDirectoryA"

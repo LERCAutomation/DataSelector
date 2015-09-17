@@ -1898,37 +1898,6 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 					i = 0
 					Do while hXMLSymbolNode
 						
-						i = i + 1
-
-						' SQL clause used to retrieve the required rows from the species table
-						Dim sClause As String
-						sClause = GetSingleNodeValue(hXMLSymbolNode, "Clause")
-
-						' Type of object (i.e. Point or Region)
-						Dim sObject As String
-						sObject = GetSingleNodeValue(hXMLSymbolNode, "Object")
-
-						' Styles (depending on type of object)
-						Dim sSymbol, sPen, sBrush As String
-						Dim stlSymbol As Symbol
-						Dim stlPen As Pen
-						Dim stlBrush As Brush
-
-						'stlSymbol = ""
-						'stlPen = ""
-						'stlBrush = ""
-						Do Case sObject
-							Case "Point"
-								sSymbol = GetSingleNodeValue(hXMLSymbolNode, "Symbol")
-								stlSymbol = STLText2Symbol(sSymbol)
-							Case "Region"
-								sPen = GetSingleNodeValue(hXMLSymbolNode, "Pen")
-								stlPen = STLText2Pen(sPen)
-								sBrush = GetSingleNodeValue(hXMLSymbolNode, "Brush")
-								stlBrush = STLText2Brush(sBrush)
-							Case Else
-						End Case
-
 						'-------------------------------------------------
 						' Close the temporary NewStyle table if it is
 						' already/still open in the current MapInfo session
@@ -1937,12 +1906,27 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 							Close Table NewStyle
 						End If
 
+						i = i + 1
+
+						'-------------------------------------------------
+						' Set the SQL clause used to retrieve the
+						' required rows from the species table
+						'-------------------------------------------------
+						Dim sClause As String
+						sClause = GetSingleNodeValue(hXMLSymbolNode, "Clause")
+
+						'-------------------------------------------------
+						' Get the type of object (i.e. Point or Region)
+						'-------------------------------------------------
+						Dim sObject As String
+						sObject = GetSingleNodeValue(hXMLSymbolNode, "Object")
+
 						'-------------------------------------------------
 						' Select all the rows of the desired object type
 						' matching the required SQL clause
 						'-------------------------------------------------
 						Dim sCmd As String
-						sCmd = "Select * From " + sLocalName + " Where Str$(obj) = """ + sObject + """ And " + sClause + " Into NewStyle"
+						sCmd = "Select * From " + sLocalName + " Where Str$(obj) = """ + sObject + """ And " + sClause + " Into NewStyle NoSelect"
 						Run Command (sCmd)
 
 						'-------------------------------------------------
@@ -1959,49 +1943,36 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 						If iRows > 0 Then
 
 							'-------------------------------------------------
-							' Fetch the first of the selected rows
+							' Set the styles (depending on type of object)
 							'-------------------------------------------------
-							Fetch First from NewStyle
+							Dim sSymbol, sPen, sBrush As String
+							Dim stlSymbol As Symbol
+							Dim stlPen As Pen
+							Dim stlBrush As Brush
+
+							Do Case sObject
+								Case "Point"
+									sSymbol = GetSingleNodeValue(hXMLSymbolNode, "Symbol")
+									stlSymbol = STLText2Symbol(sSymbol)
+								Case "Region"
+									sPen = GetSingleNodeValue(hXMLSymbolNode, "Pen")
+									stlPen = STLText2Pen(sPen)
+									sBrush = GetSingleNodeValue(hXMLSymbolNode, "Brush")
+									stlBrush = STLText2Brush(sBrush)
+								Case Else
+							End Case
 
 							'-------------------------------------------------
-							' Loop through all the selected rows setting the
-							' symbology style
+							' Alter the object style depending on the object
+							' type and style type
 							'-------------------------------------------------
-							Dim iRow as Integer
-							iRow = 1
-							Do while iRow <= iRows
-
-								'-------------------------------------------------
-								' Set the current object to update
-								'-------------------------------------------------
-								Dim oUpdateObj as Object
-								oUpdateObj = NewStyle.obj
-
-								'-------------------------------------------------
-								' Alter the object style depending on the object
-								' type and style type
-								'-------------------------------------------------
-								Do Case sObject
-									Case "Point"
-										Alter Object oUpdateObj Info OBJ_INFO_SYMBOL, stlSymbol
-									Case "Region"
-										Alter Object oUpdateObj Info OBJ_INFO_PEN, stlPen
-										Alter Object oUpdateObj Info OBJ_INFO_BRUSH, stlBrush
-									Case Else
-								End Case
-
-								'-------------------------------------------------
-								' Update the row
-								'-------------------------------------------------
-								Update NewStyle Set Obj = oUpdateObj Where RowID = iRow
-
-								'-------------------------------------------------
-								' Fetch the next of the selected rows
-								'-------------------------------------------------
-								Fetch next from NewStyle
-								iRow = iRow + 1
-
-							Loop
+							Do Case sObject
+								Case "Point"
+									Update NewStyle Set Obj = SetStylePoint(Obj, stlSymbol)
+								Case "Region"
+									Update NewStyle Set Obj = SetStylePolygon(Obj, stlPen, stlBrush)
+								Case Else
+							End Case
 
 						End If
 
@@ -2078,6 +2049,21 @@ GetSymbologyError:
 	Exit Sub
 
 End Sub
+
+Function SetStylePoint(ByVal oObj As Object, ByVal stlSymbol As Symbol) As Object
+
+	Alter Object oObj Info OBJ_INFO_SYMBOL, stlSymbol
+	SetStylePoint = oObj
+
+End Function
+
+Function SetStylePolygon(ByVal oObj As Object, ByVal stlPen As Pen, ByVal stlBrush As Brush) As Object
+
+	Alter Object oObj Info OBJ_INFO_PEN, stlPen
+	Alter Object oObj Info OBJ_INFO_BRUSH, stlBrush
+	SetStylePolygon = oObj
+
+End Function
 
 Sub AboutBox
 '***************************************************************
