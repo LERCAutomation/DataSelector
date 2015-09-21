@@ -131,8 +131,10 @@ Sub GetDefaultValues
 					' Load the default values from the child nodes
 					' under the DataExtractor node
 					'-------------------------------------------------
-					' Log file for storing output messages
-					sLogFileName = GetSingleNodeValue(hXMLNode, "LogFileName")
+					' File path for for storing the log file
+					Dim sLogFilePath As string
+					sLogFilePath = GetSingleNodeValue(hXMLNode, "LogFilePath")
+					sLogFileName = sLogFilePath & "\DataSelector_" & sUserID & ".log"
 
 					' File DSN path and name containing remote SQL database connection settings
 					sFileDSN = GetSingleNodeValue(hXMLNode, "FileDSN")
@@ -240,6 +242,13 @@ Sub OpenDialog
 	' Trap errors
 	'-------------------------------------------------
     OnError Goto ErrorTrap
+
+	'-------------------------------------------------
+	' Get the current user ID
+	'-------------------------------------------------
+	sUserID = GetUserID()
+	sUserID = StringReplace(sUserID, " ", "_")
+	sUserID = StringReplace(sUserID, ".", "_")
 
 	'-------------------------------------------------
 	' Retrieve the default values from the config file
@@ -404,7 +413,7 @@ Sub OpenDialog
 		ID 12
 		Title "Plot data spatially?"
 		Position 190,160
-		Value TRUE
+		Value FALSE
 		Hide
 		'Into bSetSymbology
 		Calling SetPlotData
@@ -596,6 +605,7 @@ SetDefaults:
 	' Set the detault maximum point precision
 	'-------------------------------------------------
 	If bEnablePlotting = True Then
+		Alter Control 12 Value TRUE
 		Alter Control 28 Value Str$(val(sDefaultPointPrecision))
 	End If
 
@@ -928,8 +938,11 @@ Sub SetSpatialColumns
 	'-------------------------------------------------
 	If iSQLTable = 0 then
 		Alter Control 22 Title ""
+		Alter Control 22 Hide
 		Alter Control 24 Title ""
+		Alter Control 24 Hide
 		Alter Control 26 Title ""
+		Alter Control 26 Hide
 		Exit Sub
 	End If
 
@@ -1195,14 +1208,6 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	OnError Goto ErrorTrap
 
 	'-------------------------------------------------
-	' Get the current user ID
-	'-------------------------------------------------
-	Dim sUserID As String
-	sUserID = GetUserID()
-	sUserID = StringReplace(sUserID, " ", "_")
-	sUserID = StringReplace(sUserID, ".", "_")
-
-	'-------------------------------------------------
 	' Setup the temporary and local table names
 	'-------------------------------------------------
 	Dim sTempName As String
@@ -1318,15 +1323,11 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	sTableAlias = TableInfo(0, TAB_INFO_NAME)
 
 	'-------------------------------------------------
-	' Check if the table contains an Obj column
-	' which indicates if there is any spatial data
+	' Unlink the temporary table to leave the local
+	' table as a regular standalone table
 	'-------------------------------------------------
-	Dim bSpatialData As Logical
-	If ColumnExists(sTableAlias, "Obj") Then
-		bSpatialData = True
-	Else
-		bSpatialData = False
-	End If
+	Call MyPrint("Unlinking dummy table ...")
+	Unlink sTableAlias
 
 	'-------------------------------------------------
 	' Check if the maximum record length will be exceeded
@@ -1389,13 +1390,6 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	End If
 
 	'-------------------------------------------------
-	' Unlink the temporary table to leave the local
-	' table as a regular standalone table
-	'-------------------------------------------------
-	Call MyPrint("Unlinking dummy table ...")
-	Unlink sTableAlias
-
-	'-------------------------------------------------
 	' Close the dummy table
 	'-------------------------------------------------
 	If TableIsOpen(sTableAlias) Then
@@ -1428,6 +1422,20 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	'-------------------------------------------------
 	Call MyPrint("Unlinking local table ...")
 	Unlink sTableAlias
+
+	'-------------------------------------------------
+	' Check if the table contains an Obj column
+	' which indicates if there is any spatial data
+	'-------------------------------------------------
+	Dim bSpatialData As Logical
+	'If ColumnExists(sTableAlias, "Obj") Then
+	If TableInfo(sTableAlias, TAB_INFO_MAPPABLE) Then
+		Call MyPrint("Table contains spatial data")
+		bSpatialData = True
+	Else
+		Call MyPrint("Table does not contain spatial data")
+		bSpatialData = False
+	End If
 
 	'-------------------------------------------------
 	' Execute a SQL Server stored procedure to delete
@@ -1475,11 +1483,17 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	'-------------------------------------------------
 	If iOutputFormat = 3 Then
 		Call MyPrint("Exporting as a CSV ...")
+
+		Set ProgressBars Off
+
 		Export sTableAlias
 			Into sOutputPath + sOutputName + ".csv"
 			Type "CSV"
 			Titles
 			Overwrite
+
+		Set ProgressBars On
+
 	End If
 
 	'-------------------------------------------------
@@ -1487,8 +1501,10 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	'-------------------------------------------------
 	If bPlotSpatialData = True Then
 
+		Call MyPrint("Plotting local table ...")
+
 		'-------------------------------------------------
-		' The the names of the spatial columns to use
+		' Get the names of the spatial columns to use
 		'-------------------------------------------------
 		Dim sXCol As String, sYCol As String, sSizeCol As String
 		sXCol = aSQLColumns(iXColumn)
@@ -1508,6 +1524,9 @@ Sub SelectSpecies (ByVal nConn As Integer,
 			' column then add the column
 			'-------------------------------------------------
 			If Not ColumnExists(sTableAlias, "Obj") Then
+				Call MyPrint("Adding map object to local table ...")
+
+
 				sCmd = "Create Map For " + sTableAlias + " CoordSys " + sCoordSys
 				Run Command (sCmd)
 			End If
@@ -1524,8 +1543,12 @@ Sub SelectSpecies (ByVal nConn As Integer,
 			Dim iMaxPointSize As Integer
 			iMaxPointSize = val(sMaxPointsPrecision)
 
+			Set ProgressBars Off
+
 			Call PlotSpatialData(sTableAlias, iMaxPointSize,
 				sXCol, sYCol, sSizeCol)
+
+			Set ProgressBars On
 
 			'-------------------------------------------------
 			' Turn off FastEdit after updates
@@ -1578,6 +1601,8 @@ Sub SelectSpecies (ByVal nConn As Integer,
 			If bSetSymbology = TRUE
 			And TableIsOpen(sTableAlias) Then
 
+				Call MyPrint("Setting symbology in table ...")
+
 				'Dim sCmd As String
 				'sCmd = "Open Table " + Chr$(34) + sOutputPath + sOutputName + Chr$(34) + " As " + sTableAlias
 				'Run Command (sCmd)
@@ -1588,6 +1613,8 @@ Sub SelectSpecies (ByVal nConn As Integer,
 				'-------------------------------------------------
 
 				If ColumnExists(sTableAlias, "GRPRECISION") Then
+
+					Set ProgressBars Off
 
 					'-------------------------------------------------
 					' Add an index to the precision field to speed
@@ -1603,8 +1630,6 @@ Sub SelectSpecies (ByVal nConn As Integer,
 					'-------------------------------------------------
 					' Set the symbology for the table
 					'-------------------------------------------------
-					Call MyPrint("Setting symbology in table ...")
-
 					Dim sNodeName As String
 					sNodeName = "Subset"
 					Call SetSymbology(sNodeName, sTableAlias)
@@ -1614,12 +1639,15 @@ Sub SelectSpecies (ByVal nConn As Integer,
 					'-------------------------------------------------
 					Set Table sTableAlias FastEdit Off
 
+					Set ProgressBars On
+
 				Else
 
 					Call MyPrint("Table does not contain 'GRPRECISION' column - unable to set symbology.")
 					Note "Table does not contain 'GRPRECISION' column - unable to set symbology."
 
 				End If
+
 
 			End If
 
@@ -1686,11 +1714,11 @@ Sub PlotSpatialData
 '***************************************************************
 
 	'-------------------------------------------------
-	' Select all the rows of the desired object type
-	' matching the required SQL clause
+	' Select the spatial columns so that the
+	' objects can be plotted
 	'-------------------------------------------------
 	Dim sCmd As String
-	sCmd = "Select " + EastingCol + ", " + NorthingCol + ", " + PrecisionCol + ", Obj, CentroidX(Obj), CentroidY(Obj) From " + sTableName + " Into NewObj"
+	sCmd = "Select " + EastingCol + ", " + NorthingCol + ", " + PrecisionCol + ", Obj, CentroidX(Obj), CentroidY(Obj) From " + sTableName + " Into NewObj NoSelect"
 	Run Command (sCmd)
 
 	'-------------------------------------------------
@@ -1789,12 +1817,8 @@ Sub PlotSpatialData
 		'-------------------------------------------------
 		' Save the updates
 		'-------------------------------------------------
-		Set ProgressBars Off
-
 		sCmd = "Commit Table NewObj"
 		Run Command (sCmd)
-
-		Set ProgressBars Off
 
 	End If
 
@@ -1986,12 +2010,8 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 					'-------------------------------------------------
 					' Save the updates
 					'-------------------------------------------------
-					Set ProgressBars Off
-
 					sCmd = "Commit Table NewStyle"
 					Run Command (sCmd)
-
-					Set ProgressBars On
 
 				End If
 
@@ -2079,7 +2099,7 @@ Sub AboutBox
 		Title "This program will select records from a SQL Server table"
 		Position 10,10
 	Control StaticText
-		Title "based on the SQL statement entered by the user and will"
+		Title "based on the SQL statements entered by the user and will"
 		Position 10,20
 	Control StaticText
 		Title "create a local MapInfo (.Tab) file, ESRI (.shp) file or"

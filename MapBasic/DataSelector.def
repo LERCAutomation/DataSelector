@@ -264,6 +264,7 @@ Declare Function MIGetErrorCode Lib MIWEBSERVICES_LIB_NAME
 '-------------------------------------------------
 ' Declare the global variables
 '-------------------------------------------------
+Global sUserId As String
 Global sDefaultExtractPath As String
 Global sDefaultQueryPath As String
 Global sDefaultFormat As String
