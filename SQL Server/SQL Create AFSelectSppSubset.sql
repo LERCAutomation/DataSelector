@@ -20,7 +20,7 @@
   along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 \*===========================================================================*/
 
-USE [NBNData_TVERC]
+USE [NBNData]
 GO
 
 SET ANSI_NULLS ON
@@ -98,15 +98,15 @@ BEGIN
 	SET @TempTable = @SpeciesTable + '_' + @UserId
 
 	-- Drop the index on the sequential primary key of the temporary table if it already exists
-	If exists (select column_name from INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE where TABLE_SCHEMA = @Schema and TABLE_NAME = @TempTable and COLUMN_NAME = 'MI_PRINX' and CONSTRAINT_NAME = 'PK_' + @TempTable + '_MI_PRINX')
+	If EXISTS (SELECT column_name FROM INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE WHERE TABLE_SCHEMA = @Schema AND TABLE_NAME = @TempTable AND COLUMN_NAME = 'MI_PRINX' AND CONSTRAINT_NAME = 'PK_' + @TempTable + '_MI_PRINX')
 	BEGIN
 		SET @sqlcommand = 'ALTER TABLE ' + @Schema + '.' + @TempTable +
-			' DROP CONSTRAINT PK_MI_PRINX'
+			' DROP CONSTRAINT PK_' + @TempTable + '_MI_PRINX'
 		EXEC (@sqlcommand)
 	END
 	
 	-- Drop the temporary table if it already exists
-	If exists (select TABLE_NAME from INFORMATION_SCHEMA.TABLES where TABLE_SCHEMA = @Schema and TABLE_NAME = @TempTable)
+	If EXISTS (SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = @Schema AND TABLE_NAME = @TempTable)
 	BEGIN
 		If @debug = 1
 			PRINT CONVERT(VARCHAR(32), CURRENT_TIMESTAMP, 109 ) + ' : ' + 'Dropping temporary table ...'
@@ -155,9 +155,9 @@ BEGIN
 			PRINT CONVERT(VARCHAR(32), CURRENT_TIMESTAMP, 109 ) + ' : ' + 'Table is spatial'
 
 		If @WhereClause = ''
-			SET @WhereClause = 'Spp.SP_GEOMETRY IS NOT NULL'
+			SET @WhereClause = 'Spp.' + @SpatialColumn + ' IS NOT NULL'
 		Else
-			SET @WhereClause = @WhereClause + ' AND Spp.SP_GEOMETRY IS NOT NULL'
+			SET @WhereClause = @WhereClause + ' AND Spp.' + @SpatialColumn + ' IS NOT NULL'
 	END
 
 	If @GroupByClause <> ''
@@ -238,13 +238,6 @@ BEGIN
 			If @debug = 1
 				PRINT CONVERT(VARCHAR(32), CURRENT_TIMESTAMP, 109 ) + ' : ' + 'Inserting the MapInfo MapCatalog entry ...'
 
-			---- Check if the spatial column is in the table
-			--IF NOT EXISTS(SELECT * FROM sys.columns WHERE Name = N'SP_GEOMETRY' AND Object_ID = Object_ID(@TempTable))
-			--BEGIN
-			--	SET @sqlcommand = 'ALTER TABLE ' + @TempTable + ' ADD SP_GEOMETRY Geometry NULL'
-			--	EXEC (@sqlcommand)
-			--END
-
 			-- Check if the rendition column is in the table
 			IF NOT EXISTS(SELECT * FROM sys.columns WHERE Name = N'MI_STYLE' AND Object_ID = Object_ID(@TempTable))
 			BEGIN
@@ -269,11 +262,11 @@ BEGIN
 				,[RENDITIONTYPE]
 				,[RENDITIONCOLUMN]
 				,[RENDITIONTABLE]
-				,[NUMBER_ROWS])
---				,[VIEW_X_LL]
---				,[VIEW_Y_LL]
---				,[VIEW_X_UR]
---				,[VIEW_Y_UR])
+				,[NUMBER_ROWS]
+				,[VIEW_X_LL]
+				,[VIEW_Y_LL]
+				,[VIEW_X_UR]
+				,[VIEW_Y_UR])
 			VALUES
 				(17.3
 				,@TempTable
@@ -290,11 +283,18 @@ BEGIN
 				,NULL
 				,'MI_STYLE'
 				,NULL
-				,@RecCnt)
---				,NULL
---				,NULL
---				,NULL
---				,NULL)
+				,@RecCnt
+				,NULL
+				,NULL
+				,NULL
+				,NULL)
+		END
+		ELSE
+		BEGIN
+
+			IF @debug = 1
+				PRINT CONVERT(VARCHAR(32), CURRENT_TIMESTAMP, 109 ) + ' : ' + 'Table is non-spatial or required columns are missing.'
+
 		END
 
 	END
