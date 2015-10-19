@@ -1,10 +1,9 @@
 Data Selector
 =============
 
-Data Selector Tool v1.00
+Data Selector Tool v1.03
 
-Copyright © 2015 Greenspace Information for Greater London (GiGL)
-Copyright © 2015 Andy Foy Consulting
+Copyright © 2015 TVERC, GiGL
 
 Overview
 --------
