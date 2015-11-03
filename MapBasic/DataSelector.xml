@@ -67,7 +67,7 @@ as a spreadsheet.
 
   <!-- The default for whether the symbology should be set for .tab files or not -->
   <DefaultSetSymbology>
-	<value>YES</value>
+	<value>Yes</value>
   </DefaultSetSymbology>
 
   <!-- Whether the SQL database tables are spatially enabled -->

@@ -121,14 +121,14 @@ Sub GetDefaultValues
 			If hXMLRoot Then
 
 				'-------------------------------------------------
-				' Get a handle on the DataExtractor node
+				' Get a handle on the DataSelector node
 				'-------------------------------------------------
 				hXMLNode = MIXmlSelectSingleNode(hXMLRoot, "DataSelector")
 	          If hXMLNode Then
 	
 					'-------------------------------------------------
 					' Load the default values from the child nodes
-					' under the DataExtractor node
+					' under the DataSelector node
 					'-------------------------------------------------
 					' File path for for storing the log file
 					Dim sLogFilePath As string
@@ -182,10 +182,10 @@ Sub GetDefaultValues
 						sDefaultPointPrecision = GetSingleNodeValue(hXMLNode, "DefaultPointsPrecision")
 
 						'-------------------------------------------------
-						' Get a handle on the DataExtractor node
+						' Get a handle on the DefaultSpatialColumns node
 						'-------------------------------------------------
 						hXMLSubNode = MIXmlSelectSingleNode(hXMLNode, "DefaultSpatialColumns")
-			          If hXMLSubNode Then
+			          	If hXMLSubNode Then
 	
 							' Default column name for the eastings value
 							sXColumn = GetSingleNodeValue(hXMLSubNode, "XColumn")
@@ -258,7 +258,7 @@ Sub OpenDialog
 	' Build a new dialog window
 	'-------------------------------------------------
 	Dialog
-		Title "Data Extractor"
+		Title "Data Selector"
 		Width 320
 		Height 310
 		Position 50,70
@@ -1289,10 +1289,11 @@ Sub SelectSpecies (ByVal nConn As Integer,
 
 	'-------------------------------------------------
 	' Replace any spaces in the table name with
-	' underscores
+	' underscores and remove hyphens
 	'-------------------------------------------------
 	Dim sIntoName As String
 	sIntoName = StringReplace(sOutputName, " ", "_")
+	sIntoName = StringReplace(sOutputName, "-", "")
 
 	Call MyPrint("Saving into '" + sOutputName + "' ...")
 
@@ -1883,7 +1884,7 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 			If hXMLRoot Then
 
 				'-------------------------------------------------
-				' Get a handle on the DataExtractor node
+				' Get a handle on the DataSelector node
 				'-------------------------------------------------
 				hXMLNode = MIXmlSelectSingleNode(hXMLRoot, "DataSelector")
 	          If hXMLNode Then
