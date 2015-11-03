@@ -2111,7 +2111,7 @@ Sub AboutBox
 		Title "Created by Andy Foy Consulting."
 		Position 10,60
 	Control StaticText
-		Title "Copyright© 2015 Greenspace Information for Greater London."
+		Title "Copyright© 2015 TVERC & GiGL."
 		Position 10,70
 	Control OKButton
 		Position 185,95
