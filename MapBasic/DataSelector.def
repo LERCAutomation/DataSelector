@@ -1,8 +1,7 @@
 '* DataSelector is a MapBasic tool and associated SQL scripts to extract
 '* biodiversity information from SQL Server based on any selection criteria.
 '*
-'* Copyright © 2015 Greenspace Information for Greater London (GiGL)
-'* Copyright © 2015 Andy Foy Consulting
+'* Copyright © 2015 TVERC, GiGL
 '* 
 '* This file is part of the MapInfo tool 'DataSelector'.
 '* 
@@ -25,7 +24,7 @@
 '* Defines global variables and declares subroutines and functions.
 '*
 '*
-'* Created:		Andy Foy - June 2015
+'* Created:			Andy Foy - June 2015
 '* Last revised:	Andy Foy - Sept 2015
 '***************************************************************
 
@@ -264,6 +263,7 @@ Declare Function MIGetErrorCode Lib MIWEBSERVICES_LIB_NAME
 '-------------------------------------------------
 ' Declare the global variables
 '-------------------------------------------------
+Global sVersion As String
 Global sUserId As String
 Global sDefaultExtractPath As String
 Global sDefaultQueryPath As String

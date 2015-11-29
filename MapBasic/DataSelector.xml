@@ -71,27 +71,33 @@ as a spreadsheet.
   </DefaultSetSymbology>
 
   <!-- Whether the SQL database tables are spatially enabled -->
-  <TablesSpatiallyEnabled>
-	<value>No</value>
-  </TablesSpatiallyEnabled>
+  <EnableSpatialPlotting>
+	<value>Yes</value>
+  </EnableSpatialPlotting>
 
-  <!-- The table columns used for creating spatial data -->
-  <SpatialColumns>
-	<Easting>
-		<value>Eastings</value>
-	</Easting>
-	<Northing>
-		<value>Northings</value>
-	</Northing>
-	<Precision>
-		<value>GRPrecision</value>
-	</Precision>
-  </SpatialColumns>
-
+  <!-- The coordinate system for mapping tables -->
+  <CoordinateSystem>
+	<value>Earth Projection 8, 79, "m", -2, 49, 0.9996012717, 400000, -100000</value>
+  </CoordinateSystem>
+  
   <!-- The default maximum precision for plotting polygons as points -->
   <DefaultPointsPrecision>
 	<value>100</value>
   </DefaultPointsPrecision>
+  
+  <!-- The table columns used for creating spatial data -->
+  <DefaultSpatialColumns>
+	<XColumn>
+		<value>Eastings</value>
+	</XColumn>
+	<YColumn>
+		<value>Northings</value>
+	</YColumn>
+	<SizeColumn>
+		<value>GRPrecision</value>
+	</SizeColumn>
+  </DefaultSpatialColumns>
+
   <!-- The table columns and SQL where clauses used to select all the required columns for
 	the species extract tables -->
   <SpeciesTables>

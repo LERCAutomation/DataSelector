@@ -66,6 +66,11 @@ Sub Main
 '***************************************************************
 
 	'-------------------------------------------------
+	' Set the version number
+	'-------------------------------------------------
+	sVersion = "1.03"
+
+	'-------------------------------------------------
 	' Create a new menu
 	'-------------------------------------------------
 	Create Menu "&Data Selector" As
@@ -258,7 +263,7 @@ Sub OpenDialog
 	' Build a new dialog window
 	'-------------------------------------------------
 	Dialog
-		Title "Data Selector"
+		Title "Data Selector " + sVersion
 		Width 320
 		Height 310
 		Position 50,70
@@ -1357,7 +1362,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	' Display the total data size
 	'-------------------------------------------------
 	Dim iDataSize As Integer
-	iDataSize = (iRowLength * iRecTotal) / 1024
+	iDataSize = ((iRowLength * iRecTotal) / 1024) + 1
 
 	If iDataSize > (1024 * 1024) Then
 		Call MyPrint("Total data size = " + FormatNumber$(iDataSize) + " Kb (" + FormatNumber$(Round(iDataSize / (1024 * 1024), 0.01)) + " Gb)")
@@ -2091,7 +2096,7 @@ Sub AboutBox
 '***************************************************************
 
 	Dialog
-		Title "About Data Selector 1.03"
+		Title "About Data Selector " + sVersion
 		Width 230
 		Height 115
 
@@ -2111,7 +2116,7 @@ Sub AboutBox
 		Title "Created by Andy Foy Consulting."
 		Position 10,60
 	Control StaticText
-		Title "Copyright© 2015 TVERC & GiGL."
+		Title "Copyright© 2015 TVERC, GiGL."
 		Position 10,70
 	Control OKButton
 		Position 185,95
