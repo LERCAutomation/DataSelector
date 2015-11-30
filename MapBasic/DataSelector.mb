@@ -942,11 +942,8 @@ Sub SetSpatialColumns
 	'-------------------------------------------------
 	If iSQLTable = 0 then
 		Alter Control 22 Title ""
-		Alter Control 22 Hide
 		Alter Control 24 Title ""
-		Alter Control 24 Hide
 		Alter Control 26 Title ""
-		Alter Control 26 Hide
 		Exit Sub
 	End If
 
@@ -993,35 +990,42 @@ Sub SetSpatialColumns
 	Server nStmt Close
 
 	'-------------------------------------------------
-	' Update the spatial column popup lists to
-	' show the column names
+	' Check if the user has ticked the plot data
+	' spatially checkbox.
 	'-------------------------------------------------
-	If bEnablePlotting = True then
+	Dim iPlotData As Integer
+	iPlotData = ReadControlValue(12)
+	If iPlotData = 1 then
+		'-------------------------------------------------
+		' Update the spatial column popup lists to
+		' show the column names
+		'-------------------------------------------------
 		Alter Control 22 Title FROM Variable aSQLColumns
 		Alter Control 24 Title FROM Variable aSQLColumns
 		Alter Control 26 Title FROM Variable aSQLColumns
+
+		'-------------------------------------------------
+		' Try and set the default values
+		'-------------------------------------------------
+		Dim j as integer
+		j = 1
+		Do While j < i
+			If aSQLColumns(j) = sXColumn Then
+				Alter Control 22 Value j
+			End If
+	
+			If aSQLColumns(j) = sYColumn Then
+				Alter Control 24 Value j
+			End If
+	
+			If aSQLColumns(j) = sSizeColumn Then
+				Alter Control 26 Value j
+			End If
+	
+			j = j + 1
+		Loop
+
 	End If
-
-	'-------------------------------------------------
-	' Try and set the default values
-	'-------------------------------------------------
-	Dim j as integer
-	j = 1
-	Do While j < i
-		If aSQLColumns(j) = sXColumn Then
-			Alter Control 22 Value j
-		End If
-
-		If aSQLColumns(j) = sYColumn Then
-			Alter Control 24 Value j
-		End If
-
-		If aSQLColumns(j) = sSizeColumn Then
-			Alter Control 26 Value j
-		End If
-
-		j = j + 1
-	Loop
 
 End Sub
 

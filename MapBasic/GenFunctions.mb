@@ -308,19 +308,36 @@ Function GetRowLength(ByVal sTableName As String) As Integer
 '* Calculate the total row length for a table
 '*************************************************
 
-	'-------------------------------------------------
-	' Loop through all the columns in the table and
-	' sum the column lengths
-	'-------------------------------------------------
 	Dim i As Integer
 	Dim iRowLength As Integer
+	Dim sColumnName As String
 	Dim iColumnType As SmallInt
 	iRowLength = 1
 
+	'-------------------------------------------------
+	' Loop through all the columns in the table
+	'-------------------------------------------------
 	For i = 1 to TableInfo(sTableName, TAB_INFO_NCOLS)
  
-       iColumnType = ColumnInfo(sTableName, "col"&i, COL_INFO_TYPE)
+		'-------------------------------------------------
+		' Get the column name and data type
+		'-------------------------------------------------
+		sColumnName = ColumnInfo(sTableName, "col"&i, COL_INFO_NAME)
+		iColumnType = ColumnInfo(sTableName, "col"&i, COL_INFO_TYPE)
 
+		'-------------------------------------------------
+		' Skip any SQL Server related columns as these
+		' do not become attibute columns in MapInfo
+		'-------------------------------------------------
+		Do Case sColumnName
+			Case "MI_STYLE", "MI_PRINX", "MI_PRINX_2", "SP_GEOMETRY"
+				Goto NextColumn
+			Case Else
+		End Case
+
+		'-------------------------------------------------
+		' Sum the column lengths based on their data type
+		'-------------------------------------------------
 		Do Case iColumnType
 			Case 1
 				iRowLength = iRowLength + ColumnInfo(sTableName, "col"&i, COL_INFO_WIDTH)
@@ -343,6 +360,8 @@ Function GetRowLength(ByVal sTableName As String) As Integer
 			Case Else
 				Call MyPrint("Column type " + iColumnType + " unrecognised.  Column length unknown")
 		End Case
+
+NextColumn:
 
 	Next
 
