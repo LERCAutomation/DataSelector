@@ -15,13 +15,13 @@ The Data Selector Tool requires the following:
 
  - MapInfo 10.0 or higher
 
- - Microsoft SQL Server 2008 Express Edition R2 or later, OR
- - Microsoft SQL Server 2008 R2 or later
+ - Microsoft SQL Server 2008 Express Edition or later, OR
+ - Microsoft SQL Server 2008 or later
 
 Source Code
 -----------
 The source code for the Data Selector Tool is open source and can be downloaded from:
-<https://github.com/LRCAutomation/Data-Selector>
+<https://github.com/LERCAutomation/DataSelector-MapInfo>
 
 License Information
 -------------------
