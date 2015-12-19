@@ -278,7 +278,7 @@ Sub OpenDialog
 	Control EditText
 		ID 1
 		Position 10,20
-		Height 80
+		Height 105
 		Width 170
 		'Into sColumnNames
 
@@ -287,11 +287,11 @@ Sub OpenDialog
 	'-------------------------------------------------
 	Control StaticText
 		Title "Where:"
-		Position 10,110
+		Position 10,130
 	Control EditText
 		ID 2
-		Position 10,120
-		Height 40
+		Position 10,140
+		Height 50
 		Width 170
 		'Into sWhereClause
 
@@ -300,11 +300,11 @@ Sub OpenDialog
 	'-------------------------------------------------
 	Control StaticText
 		Title "Group By:"
-		Position 10,170
+		Position 10,195
 	Control EditText
 		ID 3
-		Position 10,180
-		Height 40
+		Position 10,205
+		Height 30
 		Width 170
 		'Into sGroupClause
 
@@ -313,11 +313,11 @@ Sub OpenDialog
 	'-------------------------------------------------
 	Control StaticText
 		Title "Order By:"
-		Position 10,230
+		Position 10,240
 	Control EditText
 		ID 4
-		Position 10,240
-		Height 40
+		Position 10,250
+		Height 30
 		Width 170
 		'Into sOrderClause
 
