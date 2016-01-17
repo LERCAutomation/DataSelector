@@ -20,15 +20,19 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* XMLFunctions v1.01
+'* XMLFunctions v1.02
 '*
 '* Contains functions to read/write values from/to XML user
 '* configuration files.
 '*
 '*
-'* Created:		Andy Foy - June 2015
-'* Last revised:	Andy Foy - June 2015
+'* Created:			Andy Foy - June 2015
+'* Last revised:	Andy Foy - January 2016
 '*
+'* *****************  Version 1.02  *****************
+'* Author: Andy Foy		Date: 17/06/2015
+'* A. Added function to return node attribute value.
+'* 
 '* *****************  Version 1.01  *****************
 '* Author: Andy Foy		Date: 03/06/2015
 '* A. Initial version of code based on Data Extractor tool.
@@ -112,6 +116,36 @@ Function GetNodeAttribute(ByVal hnode As MIXmlNode) As String
 		strValue = Space$(STRING_LEN)
 		If MIXmlNodeGetValue(hNode, strValue, STRING_LEN) Then
 			GetNodeAttribute = strValue
+		End If
+	End If
+
+CleanUp:
+	Exit Function
+
+ErrorHandler:
+	Note str$(Err()) + ": " + Error$()
+	Call MyPrint(str$(Err()) + ": " + Error$())
+
+	If 342 = Err() Then
+		Exit Function
+	Else
+		Resume CleanUp
+	End If
+
+End Function
+
+Function GetNodeAttributeValue(ByVal hnode As MIXmlNode, ByVal strAttribute As String) As String
+'*************************************************
+'* Retrieve a given attribute value of an XML node
+'*************************************************
+
+	OnError GoTo ErrorHandler
+
+	If hNode Then
+		Dim strValue As String
+		strValue = Space$(STRING_LEN)
+		If MIXmlNodeGetAttributeValue(hNode, strAttribute, strValue, STRING_LEN) Then
+			GetNodeAttributeValue = strValue
 		End If
 	End If
 

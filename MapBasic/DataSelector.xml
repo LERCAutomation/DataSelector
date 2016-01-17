@@ -66,24 +66,19 @@ as a spreadsheet.
   </RecMax>
 
   <!-- The default for whether the symbology should be set for .tab files or not -->
-  <DefaultSetSymbology>
-	<value>Yes</value>
-  </DefaultSetSymbology>
+  <DefaultSymbologySet>
+	<value>2</value>
+  </DefaultSymbologySet>
 
   <!-- Whether the SQL database tables are spatially enabled -->
   <EnableSpatialPlotting>
-	<value>Yes</value>
+	<value>No</value>
   </EnableSpatialPlotting>
 
   <!-- The coordinate system for mapping tables -->
   <CoordinateSystem>
 	<value>Earth Projection 8, 79, "m", -2, 49, 0.9996012717, 400000, -100000</value>
   </CoordinateSystem>
-  
-  <!-- The default maximum precision for plotting polygons as points -->
-  <DefaultPointsPrecision>
-	<value>100</value>
-  </DefaultPointsPrecision>
   
   <!-- The table columns used for creating spatial data -->
   <DefaultSpatialColumns>
@@ -98,10 +93,14 @@ as a spreadsheet.
 	</SizeColumn>
   </DefaultSpatialColumns>
 
-  <!-- The table columns and SQL where clauses used to select all the required columns for
-	the species extract tables -->
-  <SpeciesTables>
-	<Subset>
+  <!-- The default maximum precision for plotting polygons as points -->
+  <DefaultPointsPrecision>
+	<value>100</value>
+  </DefaultPointsPrecision>
+  
+  <!-- The symbology sets available for applying to any MapInfo .tab outputs -->
+  <MapInfoTables>
+	<SymbolSet1 Desc="Standard Points/Polygons">
 		<Symbology>
 			<Symbol>
 				<Clause>
@@ -196,8 +195,8 @@ as a spreadsheet.
 				</Brush>
 			</Symbol>
 		</Symbology>
-	</Subset>
-  </SpeciesTables>
+	</SymbolSet1>
+  </MapInfoTables>
 
 </DataSelector>
 </configuration>

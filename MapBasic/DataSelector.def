@@ -158,6 +158,9 @@ Declare Function GetNodeName(
 	ByVal hNode As MIXmlNode) As String
 Declare Function GetNodeAttribute(
 	ByVal hNode As MIXmlNode) As String
+Declare Function GetNodeAttributeValue(
+	ByVal hnode As MIXmlNode,
+	ByVal strAttribute As String) As String
 Declare Function SetStylePoint(
 	ByVal oObj As Object,
 	ByVal stlSymbol As Symbol) As Object
@@ -245,6 +248,12 @@ Declare Function MIXmlGetAttributeList Lib MIXML_LIB_NAME Alias "MIXmlGetAttribu
 Declare Function MIXmlGetNextAttribute Lib MIXML_LIB_NAME Alias "MIXmlGetNextAttribute" (
 	ByVal hXMLAttributeList As MIXmlNamedNodeMap)
 	As MIXmlNode
+Declare Function MIXmlNodeGetAttributeValue Lib MIXML_LIB_NAME Alias "MIXmlNodeGetAttributeValue" (
+	ByVal hXMLNode As MIXmlNode,
+	ByVal strAttributeName As String,
+	pValue As String,
+	ByVal nLen As Integer)
+	As SmallInt
 Declare Function MIXmlNodeGetName Lib MIXML_LIB_NAME Alias "MIXmlNodeGetName" (
 	ByVal hXMLNode As MIXmlNode,
 	pName As String,
@@ -272,7 +281,7 @@ Global sFileDSN As String
 Global sDefaultSchema As String
 Global sTableListSQL As String
 Global sLogFileName As String
-Global sDefaultSetSymbology As String
+Global sDefaultSymbologySet As String
 Global bEnablePlotting As Logical
 Global sCoordSys As String
 Global sDefaultPointPrecision As String
@@ -282,8 +291,8 @@ Global sSizeColumn As String
 
 Global aSQLTables(99) As String
 Global aSQLColumns(99) As String
-'Global aSppNodes(99) As String
-'Global aSppTables(99) As String
+Global aSymbolNodes(99) As String
+Global aSymbolDescs(99) As String
 
 Global iExtractTot As Integer
 Global iExtractCnt As Integer
@@ -294,7 +303,7 @@ Global iSizeColumn As Integer
 Global nConn As Integer
 Global iRecMax As Integer
 Global bClearLog As Logical
-Global bSetSymbology As Logical
+Global iSymbologySet As Integer
 Global iOutputFormat As Integer
 Global sOutputFormat As String
 Global sOutputFile As String

@@ -19,7 +19,7 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector v1.03
+'* DataSelector v1.04
 '*
 '* Creates a dialog window which lists the SQL tables
 '* in the remote SQL Server and allows the user to enter a
@@ -29,7 +29,16 @@
 '* of the selected records.
 '*
 '* Created:			Andy Foy - June 2015
-'* Last revised:	Andy Foy - Sept 2015
+'* Last revised:	Andy Foy - January 2016
+'*
+'* *****************  Version 1.04  *****************
+'* Author: Andy Foy		Date: 17/01/2016
+'* A. Added option to choose symbology set from
+'*    drop-down list.
+'* B. Removed hard-coding of precision colum name.
+'* C. Fix bug where plot column name drop-down lists
+'*    appear when no SQL table selected.
+'* D. Fix bug when output table name contains spaces.
 '*
 '* *****************  Version 1.03  *****************
 '* Author: Andy Foy		Date: 08/09/2015
@@ -68,7 +77,7 @@ Sub Main
 	'-------------------------------------------------
 	' Set the version number
 	'-------------------------------------------------
-	sVersion = "1.03"
+	sVersion = "1.04"
 
 	'-------------------------------------------------
 	' Create a new menu
@@ -100,9 +109,9 @@ Sub GetDefaultValues
 	Dim hXMLRoot As MIXmlNode
 	Dim hXMLNode As MIXmlNode
 	Dim hXMLSubNode As MIXmlNode
-	Dim hXMLFilesNodeList As MIXMLNodeList
-	Dim hXMLFilesNodeParent As MIXmlNode
-	Dim hXMLFilesNode As MIXmlNode
+	Dim hXMLMapInfoTableNode As MIXmlNode
+	Dim hXMLSymbolSetList As MIXMLNodeList
+	Dim hXMLSymbolSetNode As MIXmlNode
 
 	OnError Goto GetVariablesError
 
@@ -161,8 +170,8 @@ Sub GetDefaultValues
 					' Default setting for the output file format
 					sDefaultFormat = GetSingleNodeValue(hXMLNode, "DefaultFormat")
 
-					' Default setting for setting the symbology
-					sDefaultSetSymbology = GetSingleNodeValue(hXMLNode, "DefaultSetSymbology")
+					' Default setting for the symbology set
+					sDefaultSymbologySet = GetSingleNodeValue(hXMLNode, "DefaultSymbologySet")
 
 					' Whether the SQL database tables can be spatially plotted
 					Dim sEnableSpatial As String
@@ -173,38 +182,71 @@ Sub GetDefaultValues
 						bEnablePlotting = False
 					End If
 
+					' Coordinate system to be used for mapping
+					sCoordSys = GetSingleNodeValue(hXMLNode, "CoordinateSystem")
+
+					' Default setting for the points precision
+					sDefaultPointPrecision = GetSingleNodeValue(hXMLNode, "DefaultPointsPrecision")
+
 					'-------------------------------------------------
-					' If spatial plotting is enabled then get the
-					' default spatial and precision column names used
-					' to plot the data spatially
+					' Get a handle on the DefaultSpatialColumns node
 					'-------------------------------------------------
-					If bEnablePlotting = True Then
+					hXMLSubNode = MIXmlSelectSingleNode(hXMLNode, "DefaultSpatialColumns")
+		          	If hXMLSubNode Then
 
-						' Coordinate system to be used for mapping
-						sCoordSys = GetSingleNodeValue(hXMLNode, "CoordinateSystem")
+						' Default column name for the eastings value
+						sXColumn = GetSingleNodeValue(hXMLSubNode, "XColumn")
 
-						' Default setting for setting the symbology
-						sDefaultPointPrecision = GetSingleNodeValue(hXMLNode, "DefaultPointsPrecision")
+						' Default column name for the northings value
+						sYColumn = GetSingleNodeValue(hXMLSubNode, "YColumn")
 
-						'-------------------------------------------------
-						' Get a handle on the DefaultSpatialColumns node
-						'-------------------------------------------------
-						hXMLSubNode = MIXmlSelectSingleNode(hXMLNode, "DefaultSpatialColumns")
-			          	If hXMLSubNode Then
-	
-							' Default column name for the eastings value
-							sXColumn = GetSingleNodeValue(hXMLSubNode, "XColumn")
-
-							' Default column name for the northings value
-							sYColumn = GetSingleNodeValue(hXMLSubNode, "YColumn")
-
-							' Default column name for the precision value
-							sSizeColumn = GetSingleNodeValue(hXMLSubNode, "SizeColumn")
-
-						End If
+						' Default column name for the precision value
+						sSizeColumn = GetSingleNodeValue(hXMLSubNode, "SizeColumn")
 
 					End If
 	
+					'-------------------------------------------------
+					' Get a handle on the MapTables node
+					'-------------------------------------------------
+					hXMLMapInfoTableNode = MIXmlSelectSingleNode(hXMLNode, "MapInfoTables")
+
+					'-------------------------------------------------
+					' Get a handle on the node map of the above node
+					'-------------------------------------------------
+					hXMLSymbolSetList = MIXMLGetChildList(hXMLMapInfoTableNode)
+
+					'-------------------------------------------------
+					' Get a handle on the first element in the node list
+					'-------------------------------------------------
+					hXMLSymbolSetNode = MIXMLGetNextNode(hXMLSymbolSetList)
+
+					'-------------------------------------------------
+					' Loop through all the elements in the node list
+					' storing the symbol set names
+					'-------------------------------------------------
+					Dim i As Integer
+					i = 1
+					aSymbolNodes(i) = ""
+					aSymbolDescs(i) = "<None>"
+					Do while hXMLSymbolSetNode
+						
+						i = i + 1
+
+						' Name of the Map node
+						aSymbolNodes(i) = GetNodeName(hXMLSymbolSetNode)
+
+						' Description of the MapInfo symbol set
+						aSymbolDescs(i) = GetNodeAttributeValue(hXMLSymbolSetNode, "Desc")
+
+						'-------------------------------------------------
+						' Get a handle on the next attribute in the node list
+						'-------------------------------------------------
+						hXMLSymbolSetNode = MIXMLGetNextNode(hXMLSymbolSetList)
+					Loop
+
+					Redim aSymbolNodes(i)
+					Redim aSymbolDescs(i)
+
 				End If
 
 			End If
@@ -221,9 +263,9 @@ CleanUp:
 	'-------------------------------------------------
 	' Destroy the handles
 	'-------------------------------------------------
-	If hXMLFilesNode Then Call MIXmlNodeDestroy(hXMLFilesNode) End If
-	If hXMLFilesNodeList Then Call MIXmlNodeListDestroy(hXMLFilesNodeList) End If
-	If hXMLFilesNodeParent Then Call MIXmlNodeDestroy(hXMLFilesNodeParent) End If
+	If hXMLSymbolSetNode Then Call MIXmlNodeDestroy(hXMLSymbolSetNode) End If
+	If hXMLSymbolSetList Then Call MIXmlNodeListDestroy(hXMLSymbolSetList) End If
+	If hXMLMapInfoTableNode Then Call MIXmlNodeDestroy(hXMLMapInfoTableNode) End If
 	If hXMLSubNode Then Call MIXmlNodeDestroy(hXMLSubNode) End If
 	If hXMLNode Then Call MIXmlNodeDestroy(hXMLNode) End If
 	If hXMLRoot Then Call MIXmlNodeDestroy(hXMLRoot) End If
@@ -331,34 +373,123 @@ Sub OpenDialog
 		ID 5
 		Title ""
 		Position 190, 20
-		Height 60
+		Height 50
 		Width 120
 		Calling SetSpatialColumns
 
 	'-------------------------------------------------
-	' Add a radio group box for the output format
+	' Add a dropdown list for the output format
 	'-------------------------------------------------
 	Control StaticText
 		Title "Output File Format:"
-		Position 190,90
+		Position 190,80
 	Control PopupMenu
 		ID 6
 		Title "MapInfo (.tab) file;ESRI (.shp) file;Comma-Separated (.csv) file"
-		Position 190,100
+		Position 190,90
 		Width 120
 		Value 1
 		'Into iOutputFormat
 		Calling SetFileFormat
 
 	'-------------------------------------------------
-	' Add a checkbox for setting symbology
+	' Add a dropdown list for the symbology sets
+	'-------------------------------------------------
+	Control StaticText
+		ID 30
+		Title "Symbology Set:"
+		Position 190,115
+	Control PopupMenu
+		ID 31
+		Title "<None>"
+		Position 190,125
+		Width 120
+		Value 1
+		'Into iSymbologySet
+
+	'-------------------------------------------------
+	' Add a group box for non-spatial data
+	'-------------------------------------------------
+	Control GroupBox
+		ID 20
+		Title "Non-spatial data"
+		Position 185,150
+		Height 125
+		Width 125
+		Hide
+
+	'-------------------------------------------------
+	' Add a checkbox for plotting spatially
 	'-------------------------------------------------
 	Control CheckBox
-		ID 7
-		Title "Set default symbology?"
-		Position 190,125
+		ID 12
+		Title "Plot data spatially?"
+		Position 190,165
 		Value FALSE
-		'Into bSetSymbology
+		Hide
+		'Into bPlotSpatialData
+		Calling SetPlotData
+
+	'-------------------------------------------------
+	' Add a popup menu for the X Column
+	'-------------------------------------------------
+	Control StaticText
+		ID 21
+		Title "XColumn:"
+		Position 190,185
+		Hide
+	Control PopUpMenu
+		ID 22
+		Position 235,183
+		Width 70
+		Title ""
+		Hide
+
+	'-------------------------------------------------
+	' Add a popup menu for the Y Column
+	'-------------------------------------------------
+	Control StaticText
+		ID 23
+		Title "YColumn:"
+		Position 190,205
+		Hide
+	Control PopUpMenu
+		ID 24
+		Position 235,203
+		Width 70
+		Title ""
+		Hide
+
+	'-------------------------------------------------
+	' Add a popup menu for the Size Column
+	'-------------------------------------------------
+	Control StaticText
+		ID 25
+		Title "Size Column:"
+		Position 190,225
+		Hide
+	Control PopUpMenu
+		ID 26
+		Position 235,223
+		Width 70
+		Title ""
+		Hide
+
+	'-------------------------------------------------
+	' Add a maximum points precision textbox
+	'-------------------------------------------------
+	Control StaticText
+		ID 27
+		Title "Max Points Precision:"
+		Position 190,255
+		Hide
+	Control EditText
+		ID 28
+		Position 265,253
+		Height 14
+		Width 35
+		Hide
+		'Into sMaxPointsPrecision
 
 	'-------------------------------------------------
 	' Add a checkbox for clearing the log file
@@ -398,90 +529,6 @@ Sub OpenDialog
 		Position 270,290
 		Width 40
 		Calling CheckSelection
-
-	'-------------------------------------------------
-	' Add a group box for non-spatial data
-	'-------------------------------------------------
-	Control GroupBox
-		ID 20
-		Title "Non-spatial data"
-		Position 185,145
-		Height 125
-		Width 125
-		Hide
-
-	'-------------------------------------------------
-	' Add a checkbox for plotting spatially
-	'-------------------------------------------------
-	Control CheckBox
-		ID 12
-		Title "Plot data spatially?"
-		Position 190,160
-		Value FALSE
-		Hide
-		'Into bSetSymbology
-		Calling SetPlotData
-
-	'-------------------------------------------------
-	' Add a popup menu for the X Column
-	'-------------------------------------------------
-	Control StaticText
-		ID 21
-		Title "XColumn:"
-		Position 190,180
-		Hide
-	Control PopUpMenu
-		ID 22
-		Position 235,178
-		Width 70
-		Title ""
-		Hide
-
-	'-------------------------------------------------
-	' Add a popup menu for the Y Column
-	'-------------------------------------------------
-	Control StaticText
-		ID 23
-		Title "YColumn:"
-		Position 190,200
-		Hide
-	Control PopUpMenu
-		ID 24
-		Position 235,198
-		Width 70
-		Title ""
-		Hide
-
-	'-------------------------------------------------
-	' Add a popup menu for the Size Column
-	'-------------------------------------------------
-	Control StaticText
-		ID 25
-		Title "Size Column:"
-		Position 190,220
-		Hide
-	Control PopUpMenu
-		ID 26
-		Position 235,218
-		Width 70
-		Title ""
-		Hide
-
-	'-------------------------------------------------
-	' Add a maximum points precision textbox
-	'-------------------------------------------------
-	Control StaticText
-		ID 27
-		Title "Max Points Precision:"
-		Position 190,250
-		Hide
-	Control EditText
-		ID 28
-		Position 265,248
-		Height 14
-		Width 35
-		Hide
-		'Into sOrderClause
 
 Done:
 	Exit Sub
@@ -565,7 +612,12 @@ Sub DialogSetup
 	' of tables
 	'-------------------------------------------------
 	Alter Control 5 Title FROM Variable aSQLTables
-	'Alter Control 5 Value 1
+
+	'-------------------------------------------------
+	' Update the Symbology Set list to show the list
+	' of symbology sets
+	'-------------------------------------------------
+	Alter Control 31 Title FROM Variable aSymbolDescs
 
 	'-------------------------------------------------
 	' Show or hide the spatial controls
@@ -599,14 +651,17 @@ SetDefaults:
 	End Case
 
 	'-------------------------------------------------
-	' Set the default value for setting the symbology
+	' Set the default Symbology Set value
 	'-------------------------------------------------
-	If UCase$(sDefaultSetSymbology) = "Y" OR UCase$(sDefaultSetSymbology) = "YES" Then
-		Alter Control 7 Value TRUE
-	End If
+	Do Case sDefaultSymbologySet
+		Case "1", "2", "3", "4", "5", "6", "7", "8", "9"
+			Alter Control 31 Value Int(sDefaultSymbologySet)
+		Case Else
+			Alter Control 31 Value 1
+	End Case
 
 	'-------------------------------------------------
-	' Set the detault maximum point precision
+	' Set the default maximum point precision
 	'-------------------------------------------------
 	If bEnablePlotting = True Then
 		Alter Control 12 Value TRUE
@@ -836,7 +891,7 @@ Sub CheckSelection
 	sOrderClause = ReadControlValue(4)
 	iSQLTable = ReadControlValue(5)
 	iOutputFormat = ReadControlValue(6)
-	bSetSymbology = ReadControlValue(7)
+	iSymbologySet = ReadControlValue(31)
 	bClearLog = ReadControlValue(8)
 	bPlotSpatialData = ReadControlValue(12)
 	sMaxPointsPrecision = ReadControlValue(28)
@@ -937,14 +992,30 @@ Sub SetSpatialColumns
 	iSQLTable = ReadControlValue(5)
 
 	'-------------------------------------------------
+	' Check if the user has ticked the plot data
+	' spatially checkbox.
+	'-------------------------------------------------
+	Dim iPlotData As Integer
+	iPlotData = ReadControlValue(12)
+
+	'-------------------------------------------------
 	' Check if the user has selected at least one table
 	' from the table list
 	'-------------------------------------------------
 	If iSQLTable = 0 then
-		Alter Control 22 Title ""
-		Alter Control 24 Title ""
-		Alter Control 26 Title ""
+	
+		'-------------------------------------------------
+		' If the user has ticked the plot data spatially
+		' checkbox then clear the column names.
+		'-------------------------------------------------
+		If iPlotData = 1 then
+			Alter Control 22 Title ""
+			Alter Control 24 Title ""
+			Alter Control 26 Title ""
+		End If
+
 		Exit Sub
+
 	End If
 
 	Dim sTableName As String
@@ -990,11 +1061,9 @@ Sub SetSpatialColumns
 	Server nStmt Close
 
 	'-------------------------------------------------
-	' Check if the user has ticked the plot data
-	' spatially checkbox.
+	' If the user has ticked the plot data spatially
+	' checkbox.
 	'-------------------------------------------------
-	Dim iPlotData As Integer
-	iPlotData = ReadControlValue(12)
 	If iPlotData = 1 then
 		'-------------------------------------------------
 		' Update the spatial column popup lists to
@@ -1031,8 +1100,8 @@ End Sub
 
 Sub SetFileFormat
 '***************************************************************
-'* Show or hide the set symbology checkbox depending upon the
-'* selected file format.
+'* Show or hide the symbology set dropdown and spatially
+'* plotting fields depending upon the selected file format.
 '***************************************************************
 
 	'-------------------------------------------------
@@ -1047,9 +1116,11 @@ Sub SetFileFormat
 	' set default symbology checkbox
 	'-------------------------------------------------
 	If iFileFormat = 1 then
-		Alter Control 7 Show
+		Alter Control 30 Show
+		Alter Control 31 Show
 	Else
-		Alter Control 7 Hide
+		Alter Control 30 Hide
+		Alter Control 31 Hide
 	End If
 
 	'-------------------------------------------------
@@ -1183,8 +1254,14 @@ Sub ProcessSelection
 		Exit Sub
 	End If
 
+	'-------------------------------------------------
+	' Replace any spaces in the table name with
+	' underscores and remove hyphens
+	'-------------------------------------------------
 	Dim sShortName As String
 	sShortName = Left$(sOutputName, Len(sOutputName) - 4)
+	sShortName = StringReplace(sShortName, " ", "_")
+	sShortName = StringReplace(sShortName, "-", "")
 
 	Call MyPrint("Output File = '" + sOutputFile + "'")
 
@@ -1296,14 +1373,6 @@ Sub SelectSpecies (ByVal nConn As Integer,
 		Close Table sOpenTableName
 	End If
 
-	'-------------------------------------------------
-	' Replace any spaces in the table name with
-	' underscores and remove hyphens
-	'-------------------------------------------------
-	Dim sIntoName As String
-	sIntoName = StringReplace(sOutputName, " ", "_")
-	sIntoName = StringReplace(sOutputName, "-", "")
-
 	Call MyPrint("Saving into '" + sOutputName + "' ...")
 
 	'-------------------------------------------------
@@ -1311,7 +1380,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	' temporary table (to check the record length).
 	'-------------------------------------------------
 	Dim sSQLStmt As String
-	sSQLStmt = "Select Top(0) * From " + sDefaultSchema + "." + sTempName
+	sSQLStmt = "Select * From " + sDefaultSchema + "." + sTempName + " WHERE NULL = NULL"
 
 	'-------------------------------------------------
 	' Link the temporary table as a local table
@@ -1320,7 +1389,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	Server nConn Link Table
 	sSQLStmt
 	Toolkit "ODBC"
-	Into sIntoName
+	Into sOutputName
 	File sOutputPath + sOutputName
 	Autokey Off
 	ReadOnly
@@ -1415,7 +1484,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	Server nConn Link Table
 	sSQLStmt
 	Toolkit "ODBC"
-	Into sIntoName
+	Into sOutputName
 	File sOutputPath + sOutputName
 	Autokey Off
 	ReadOnly
@@ -1505,6 +1574,8 @@ Sub SelectSpecies (ByVal nConn As Integer,
 
 	End If
 
+	Dim sXCol As String, sYCol As String, sSizeCol As String
+
 	'-------------------------------------------------
 	' If the data is to be plotted spatially
 	'-------------------------------------------------
@@ -1515,7 +1586,6 @@ Sub SelectSpecies (ByVal nConn As Integer,
 		'-------------------------------------------------
 		' Get the names of the spatial columns to use
 		'-------------------------------------------------
-		Dim sXCol As String, sYCol As String, sSizeCol As String
 		sXCol = aSQLColumns(iXColumn)
 		sYCol = aSQLColumns(iYColumn)
 		sSizeCol = aSQLColumns(iSizeColumn)
@@ -1576,6 +1646,13 @@ Sub SelectSpecies (ByVal nConn As Integer,
 
 		End If
 
+	Else
+
+		'-------------------------------------------------
+		' Set size column to the default column name
+		'-------------------------------------------------
+		sSizeCol = sSizeColumn
+
 	End If
 
 	'-------------------------------------------------
@@ -1607,21 +1684,17 @@ Sub SelectSpecies (ByVal nConn As Integer,
 			' If the symbology is to be set and the table is
 			' open
 			'-------------------------------------------------
-			If bSetSymbology = TRUE
+			If iSymbologySet > 1
 			And TableIsOpen(sTableAlias) Then
 
 				Call MyPrint("Setting symbology in table ...")
 
-				'Dim sCmd As String
-				'sCmd = "Open Table " + Chr$(34) + sOutputPath + sOutputName + Chr$(34) + " As " + sTableAlias
-				'Run Command (sCmd)
-
 				'-------------------------------------------------
-				' If the local table contains a GRPRECISION
+				' If the local table contains a size
 				' column (which the symbology is based on)
 				'-------------------------------------------------
 
-				If ColumnExists(sTableAlias, "GRPRECISION") Then
+				If ColumnExists(sTableAlias, sSizeCol) Then
 
 					Set ProgressBars Off
 
@@ -1629,7 +1702,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 					' Add an index to the precision field to speed
 					' up the symbology setting
 					'-------------------------------------------------
-					'Create Index On sTableAlias(GRPRECISION)
+					'Create Index On sTableAlias(sSizeCol)
 
 					'-------------------------------------------------
 					' Turn on FastEdit to speed up the updates
@@ -1640,7 +1713,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 					' Set the symbology for the table
 					'-------------------------------------------------
 					Dim sNodeName As String
-					sNodeName = "Subset"
+					sNodeName = aSymbolNodes(iSymbologySet)
 					Call SetSymbology(sNodeName, sTableAlias)
 
 					'-------------------------------------------------
@@ -1652,8 +1725,8 @@ Sub SelectSpecies (ByVal nConn As Integer,
 
 				Else
 
-					Call MyPrint("Table does not contain 'GRPRECISION' column - unable to set symbology.")
-					Note "Table does not contain 'GRPRECISION' column - unable to set symbology."
+					Call MyPrint("Table does not contain a size column - unable to set symbology.")
+					Note "Table does not contain a size column - unable to set symbology."
 
 				End If
 
@@ -1678,8 +1751,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 			'-------------------------------------------------
 			Browse * From sTableAlias
 
-			'Call MyPrint("Table does not have graphic information. Unable to map layer.")
-			'Note "Table does not have graphic information. Unable to map layer."
+			Call MyPrint("Table does not have graphic information. Table not mapped.")
 
 		End If
 
@@ -1865,8 +1937,8 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 	Dim hXMLDoc As MIXmlDocument
 	Dim hXMLRoot As MIXmlNode
 	Dim hXMLNode As MIXmlNode
-	Dim hXMLSpeciesTableNode As MIXmlNode
-	Dim hXMLTableNode As MIXmlNode
+	Dim hXMLMapInfoTableNode As MIXmlNode
+	Dim hXMLSymbolSetNode As MIXmlNode
 	Dim hXMLSymbologyNode As MIXmlNode
 	Dim hXMLSymbolNodeList As MIXMLNodeList
 	Dim hXMLSymbolNode As MIXmlNode
@@ -1896,22 +1968,22 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 				' Get a handle on the DataSelector node
 				'-------------------------------------------------
 				hXMLNode = MIXmlSelectSingleNode(hXMLRoot, "DataSelector")
-	          If hXMLNode Then
+	          	If hXMLNode Then
 	
 					'-------------------------------------------------
 					' Get a handle on the SpeciesTables node
 					'-------------------------------------------------
-					hXMLSpeciesTableNode = MIXmlSelectSingleNode(hXMLNode, "SpeciesTables")
+					hXMLMapInfoTableNode = MIXmlSelectSingleNode(hXMLNode, "MapInfoTables")
 
 					'-------------------------------------------------
-					' Get a handle on the current species table node
+					' Get a handle on the required symbology set node
 					'-------------------------------------------------
-					hXMLTableNode = MIXmlSelectSingleNode(hXMLSpeciesTableNode, sNodeName)
+					hXMLSymbolSetNode = MIXmlSelectSingleNode(hXMLMapInfoTableNode, sNodeName)
 
 					'-------------------------------------------------
 					' Get a handle on the symbology node for the table
 					'-------------------------------------------------
-					hXMLSymbologyNode = MIXmlSelectSingleNode(hXMLTableNode, "Symbology")
+					hXMLSymbologyNode = MIXmlSelectSingleNode(hXMLSymbolSetNode, "Symbology")
 
 					'-------------------------------------------------
 					' Get a handle on the node map of the above node
@@ -2042,9 +2114,9 @@ CleanUp:
 	If hXMLSymbolNode Then Call MIXmlNodeDestroy(hXMLSymbolNode) End If
 	If hXMLSymbolNodeList Then Call MIXmlNodeListDestroy(hXMLSymbolNodeList) End If
 	If hXMLSymbologyNode Then Call MIXmlNodeDestroy(hXMLSymbologyNode) End If
-	If hXMLTableNode Then Call MIXmlNodeDestroy(hXMLTableNode) End If
+	If hXMLSymbolSetNode Then Call MIXmlNodeDestroy(hXMLSymbolSetNode) End If
 
-	If hXMLSpeciesTableNode Then Call MIXmlNodeDestroy(hXMLSpeciesTableNode) End If
+	If hXMLMapInfoTableNode Then Call MIXmlNodeDestroy(hXMLMapInfoTableNode) End If
 	If hXMLNode Then Call MIXmlNodeDestroy(hXMLNode) End If
 	If hXMLRoot Then Call MIXmlNodeDestroy(hXMLRoot) End If
 	If hXMLDoc Then Call MIXmlDocumentDestroy(hXMLDoc) End If
