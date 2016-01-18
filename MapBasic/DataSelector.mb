@@ -1309,7 +1309,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	nStmt1 = Server_Execute(nConn, "EXECUTE dbo.AFSelectSppSubset '"
 	 + sDefaultSchema	 + "', '" + sTableName + "', '" + sColumnNames + "', '"
 	 + sWhereClause + "', '" + sGroupClause + "', '" + sOrderClause + "', '"
-	 + sUserID + "'")
+	 + sUserID + "', 0")
 
 	'-------------------------------------------------
 	' Close the results
