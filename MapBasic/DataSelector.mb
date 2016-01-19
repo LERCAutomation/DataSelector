@@ -1,7 +1,7 @@
 '* DataSelector is a MapBasic tool and associated SQL scripts to extract
 '* biodiversity information from SQL Server based on any selection criteria.
 '*
-'* Copyright © 2015 TVERC, GiGL
+'* Copyright © 2015 - 2016 TVERC, GiGL
 '* 
 '* This file is part of the MapInfo tool 'DataSelector'.
 '* 
@@ -653,12 +653,7 @@ SetDefaults:
 	'-------------------------------------------------
 	' Set the default Symbology Set value
 	'-------------------------------------------------
-	Do Case sDefaultSymbologySet
-		Case "1", "2", "3", "4", "5", "6", "7", "8", "9"
-			Alter Control 31 Value Int(sDefaultSymbologySet)
-		Case Else
-			Alter Control 31 Value 1
-	End Case
+	Alter Control 31 Value Val(sDefaultSymbologySet) + 1
 
 	'-------------------------------------------------
 	' Set the default maximum point precision

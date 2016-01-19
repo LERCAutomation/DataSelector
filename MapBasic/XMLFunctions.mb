@@ -1,8 +1,7 @@
 '* DataSelector is a MapBasic tool and associated SQL scripts to extract
 '* biodiversity information from SQL Server based on any selection criteria.
 '*
-'* Copyright © 2013 Greenspace Information for Greater London (GiGL)
-'* Copyright © 2015 Andy Foy Consulting
+'* Copyright © 2015 - 2016 TVERC, GiGL
 '* 
 '* This file is part of the MapInfo tool 'DataSelector'.
 '* 
@@ -30,7 +29,7 @@
 '* Last revised:	Andy Foy - January 2016
 '*
 '* *****************  Version 1.02  *****************
-'* Author: Andy Foy		Date: 17/06/2015
+'* Author: Andy Foy		Date: 17/01/2016
 '* A. Added function to return node attribute value.
 '* 
 '* *****************  Version 1.01  *****************
