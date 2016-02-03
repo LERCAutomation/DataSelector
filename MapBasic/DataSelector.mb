@@ -19,7 +19,7 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector v1.04
+'* DataSelector v1.05
 '*
 '* Creates a dialog window which lists the SQL tables
 '* in the remote SQL Server and allows the user to enter a
@@ -30,6 +30,11 @@
 '*
 '* Created:			Andy Foy - June 2015
 '* Last revised:	Andy Foy - January 2016
+'*
+'* *****************  Version 1.05  *****************
+'* Author: Andy Foy		Date: 29/01/2016
+'* A. Enable plotting columns to be deleted upon
+'*    completion.
 '*
 '* *****************  Version 1.04  *****************
 '* Author: Andy Foy		Date: 17/01/2016
@@ -77,7 +82,7 @@ Sub Main
 	'-------------------------------------------------
 	' Set the version number
 	'-------------------------------------------------
-	sVersion = "1.04"
+	sVersion = "1.05"
 
 	'-------------------------------------------------
 	' Create a new menu
@@ -373,7 +378,7 @@ Sub OpenDialog
 		ID 5
 		Title ""
 		Position 190, 20
-		Height 50
+		Height 40
 		Width 120
 		Calling SetSpatialColumns
 
@@ -382,11 +387,11 @@ Sub OpenDialog
 	'-------------------------------------------------
 	Control StaticText
 		Title "Output File Format:"
-		Position 190,80
+		Position 190,67
 	Control PopupMenu
 		ID 6
 		Title "MapInfo (.tab) file;ESRI (.shp) file;Comma-Separated (.csv) file"
-		Position 190,90
+		Position 190,77
 		Width 120
 		Value 1
 		'Into iOutputFormat
@@ -398,11 +403,11 @@ Sub OpenDialog
 	Control StaticText
 		ID 30
 		Title "Symbology Set:"
-		Position 190,115
+		Position 190,102
 	Control PopupMenu
 		ID 31
 		Title "<None>"
-		Position 190,125
+		Position 190,112
 		Width 120
 		Value 1
 		'Into iSymbologySet
@@ -413,8 +418,8 @@ Sub OpenDialog
 	Control GroupBox
 		ID 20
 		Title "Non-spatial data"
-		Position 185,150
-		Height 125
+		Position 185,137
+		Height 143
 		Width 125
 		Hide
 
@@ -424,7 +429,7 @@ Sub OpenDialog
 	Control CheckBox
 		ID 12
 		Title "Plot data spatially?"
-		Position 190,165
+		Position 190,153
 		Value FALSE
 		Hide
 		'Into bPlotSpatialData
@@ -435,13 +440,13 @@ Sub OpenDialog
 	'-------------------------------------------------
 	Control StaticText
 		ID 21
-		Title "XColumn:"
-		Position 190,185
+		Title "X Col:"
+		Position 190,175
 		Hide
 	Control PopUpMenu
 		ID 22
-		Position 235,183
-		Width 70
+		Position 230,173
+		Width 75
 		Title ""
 		Hide
 
@@ -450,13 +455,13 @@ Sub OpenDialog
 	'-------------------------------------------------
 	Control StaticText
 		ID 23
-		Title "YColumn:"
-		Position 190,205
+		Title "Y Col:"
+		Position 190,195
 		Hide
 	Control PopUpMenu
 		ID 24
-		Position 235,203
-		Width 70
+		Position 230,193
+		Width 75
 		Title ""
 		Hide
 
@@ -465,13 +470,13 @@ Sub OpenDialog
 	'-------------------------------------------------
 	Control StaticText
 		ID 25
-		Title "Size Column:"
-		Position 190,225
+		Title "Size Col:"
+		Position 190,215
 		Hide
 	Control PopUpMenu
 		ID 26
-		Position 235,223
-		Width 70
+		Position 230,213
+		Width 75
 		Title ""
 		Hide
 
@@ -481,15 +486,26 @@ Sub OpenDialog
 	Control StaticText
 		ID 27
 		Title "Max Points Precision:"
-		Position 190,255
+		Position 190,240
 		Hide
 	Control EditText
 		ID 28
-		Position 265,253
+		Position 265,238
 		Height 14
-		Width 35
+		Width 40
 		Hide
 		'Into sMaxPointsPrecision
+
+	'-------------------------------------------------
+	' Add a checkbox for deleting columns after plotting
+	'-------------------------------------------------
+	Control CheckBox
+		ID 40
+		Title "Delete columns after plotting?"
+		Position 190,263
+		Value FALSE
+		Hide
+		'Into bDeletePlotColumns
 
 	'-------------------------------------------------
 	' Add a checkbox for clearing the log file
@@ -633,6 +649,7 @@ Sub DialogSetup
 		Alter Control 26 Show
 		Alter Control 27 Show
 		Alter Control 28 Show
+		Alter Control 40 Show
 	End If
 
 SetDefaults:
@@ -653,7 +670,10 @@ SetDefaults:
 	'-------------------------------------------------
 	' Set the default Symbology Set value
 	'-------------------------------------------------
-	Alter Control 31 Value Val(sDefaultSymbologySet) + 1
+	If Val(sDefaultSymbologySet) >= 0 And
+	   Val(sDefaultSymbologySet) < UBound(aSymbolDescs) Then
+		Alter Control 31 Value Val(sDefaultSymbologySet) + 1
+	End If
 
 	'-------------------------------------------------
 	' Set the default maximum point precision
@@ -889,10 +909,11 @@ Sub CheckSelection
 	iSymbologySet = ReadControlValue(31)
 	bClearLog = ReadControlValue(8)
 	bPlotSpatialData = ReadControlValue(12)
-	sMaxPointsPrecision = ReadControlValue(28)
 	iXColumn = ReadControlValue(22)
 	iYColumn = ReadControlValue(24)
 	iSizeColumn = ReadControlValue(26)
+	sMaxPointsPrecision = ReadControlValue(28)
+	bDeletePlotColumns = ReadControlValue(40)
 
 	'-------------------------------------------------
 	' Check if the user has selected at least one table
@@ -1134,6 +1155,7 @@ Sub SetFileFormat
 			Alter Control 26 Show
 			Alter Control 27 Show
 			Alter Control 28 Show
+			Alter Control 40 Show
 		Else
 			Alter Control 12 Hide
 			Alter Control 20 Hide
@@ -1145,6 +1167,7 @@ Sub SetFileFormat
 			Alter Control 26 Hide
 			Alter Control 27 Hide
 			Alter Control 28 Hide
+			Alter Control 40 Hide
 		End If
 	End If
 
@@ -1171,6 +1194,7 @@ Sub SetPlotData
 		Alter Control 26 Show
 		Alter Control 27 Show
 		Alter Control 28 Show
+		Alter Control 40 Show
 	Else
 		Alter Control 21 Hide
 		Alter Control 22 Hide
@@ -1180,6 +1204,7 @@ Sub SetPlotData
 		Alter Control 26 Hide
 		Alter Control 27 Hide
 		Alter Control 28 Hide
+		Alter Control 40 Hide
 	End If
 
 End Sub
@@ -1523,14 +1548,14 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	'-------------------------------------------------
 	Server nStmt3 Close
 
-	Set ProgressBars Off
-
 	'-------------------------------------------------
 	' If the local table contains a MI_STYLE
 	' column then delete the column
 	'-------------------------------------------------
+	Dim sDropColumns As String
+	sDropColumns = ""
 	If ColumnExists(sTableAlias, "MI_STYLE") Then
-		Alter Table sTableAlias (Drop MI_STYLE)
+		sDropColumns = "MI_STYLE"
 	End If
 
 	'-------------------------------------------------
@@ -1538,7 +1563,11 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	' column then delete the column
 	'-------------------------------------------------
 	If ColumnExists(sTableAlias, "MI_PRINX") Then
-		Alter Table sTableAlias (Drop MI_PRINX)
+		If sDropColumns = "" Then
+			sDropColumns = "MI_PRINX"
+		Else
+			sDropColumns = sDropColumns + ", MI_PRINX"
+		End If
 	End If
 
 	'-------------------------------------------------
@@ -1546,7 +1575,20 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	' column then delete the column
 	'-------------------------------------------------
 	If ColumnExists(sTableAlias, "MI_SQL_REC_NUM") Then
-		Alter Table sTableAlias (Drop MI_SQL_REC_NUM)
+		If sDropColumns = "" Then
+			sDropColumns = "MI_SQL_REC_NUM"
+		Else
+			sDropColumns = sDropColumns + ", MI_SQL_REC_NUM"
+		End If
+	End If
+
+	'-------------------------------------------------
+	' Drop the unwanted columns
+	'-------------------------------------------------
+	Set ProgressBars Off
+
+	If sDropColumns <> "" Then
+		Alter Table sTableAlias (Drop sDropColumns)
 	End If
 
 	Set ProgressBars On
@@ -1639,6 +1681,11 @@ Sub SelectSpecies (ByVal nConn As Integer,
 			Call MyPrint("Table does not contain required columns - plotting cancelled.")
 			Note "Table does not contain required columns - plotting cancelled."
 
+			'-------------------------------------------------
+			' Flag that the data is not spatial
+			'-------------------------------------------------
+			bSpatialData = False
+
 		End If
 
 	Else
@@ -1728,6 +1775,54 @@ Sub SelectSpecies (ByVal nConn As Integer,
 
 			End If
 
+			'-------------------------------------------------
+			' If the data was plotted spatially and the
+			' columns used are to be deleted afterwards
+			' then delete them now
+			'-------------------------------------------------
+			If bDeletePlotColumns = True Then
+		
+				Call MyPrint("Deleting columns used for plotting ...")
+		
+				'-------------------------------------------------
+				' Check the local table contains the required
+				' columns
+				'-------------------------------------------------
+				sDropColumns = ""
+				If ColumnExists(sTableAlias, sXCol) Then
+					sDropColumns = sXCol
+				End If
+				
+				If ColumnExists(sTableAlias, sYCol) Then
+					If sDropColumns = "" Then
+						sDropColumns = sYCol
+					Else
+						sDropColumns = sDropColumns + ", " + sYCol
+					End If
+				End If
+				   
+				If ColumnExists(sTableAlias, sSizeCol) Then
+					If sDropColumns = "" Then
+						sDropColumns = sSizeCol
+					Else
+						sDropColumns = sDropColumns + ", " + sSizeCol
+					End If
+				End If
+		
+				'-------------------------------------------------
+				' Drop the unwanted columns
+				'-------------------------------------------------
+				If sDropColumns <> "" Then
+					Set ProgressBars Off
+		
+					sCmd = "Alter Table " + sTableAlias + "(Drop " + sDropColumns + ")"
+					Run Command (sCmd)
+		
+					Set ProgressBars On
+				End If
+		
+			End If
+		
 	 		'-------------------------------------------------
 			' Add the table to the top most map window (if
 			' there is one), otherwise create a new map
@@ -2066,6 +2161,8 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 							' Alter the object style depending on the object
 							' type and style type
 							'-------------------------------------------------
+							OnError Goto SetSymbologyError
+							
 							Do Case sObject
 								Case "Point"
 									Update NewStyle Set Obj = SetStylePoint(Obj, stlSymbol)
@@ -2073,6 +2170,8 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 									Update NewStyle Set Obj = SetStylePolygon(Obj, stlPen, stlBrush)
 								Case Else
 							End Case
+
+							OnError Goto GetSymbologyError
 
 						End If
 
@@ -2144,6 +2243,10 @@ GetSymbologyError:
 	Goto CleanUp
 	Exit Sub
 
+SetSymbologyError:
+	Call MyPrint(str$(Err()) + ": " + Error$())
+	Resume Next
+
 End Sub
 
 Function SetStylePoint(ByVal oObj As Object, ByVal stlSymbol As Symbol) As Object
@@ -2187,7 +2290,7 @@ Sub AboutBox
 		Title "Created by Andy Foy Consulting."
 		Position 10,60
 	Control StaticText
-		Title "Copyright© 2015 TVERC, GiGL."
+		Title "Copyright© 2015 - 2016 TVERC, GiGL."
 		Position 10,70
 	Control OKButton
 		Position 185,95

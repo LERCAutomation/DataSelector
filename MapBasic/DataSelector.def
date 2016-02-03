@@ -313,3 +313,4 @@ Global sOrderClause As String
 Global sColumnNames As String
 Global bPlotSpatialData As Logical
 Global sMaxPointsPrecision As String
+Global bDeletePlotColumns As Logical
