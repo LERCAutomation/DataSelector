@@ -19,7 +19,7 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector v1.05
+'* DataSelector v1.06
 '*
 '* Creates a dialog window which lists the SQL tables
 '* in the remote SQL Server and allows the user to enter a
@@ -29,7 +29,12 @@
 '* of the selected records.
 '*
 '* Created:			Andy Foy - June 2015
-'* Last revised:	Andy Foy - January 2016
+'* Last revised:	Andy Foy - February 2016
+'*
+'* *****************  Version 1.06  *****************
+'* Author: Andy Foy		Date: 16/02/2016
+'* A. Don't close dialog until output file has been
+'*    selected.
 '*
 '* *****************  Version 1.05  *****************
 '* Author: Andy Foy		Date: 29/01/2016
@@ -82,7 +87,7 @@ Sub Main
 	'-------------------------------------------------
 	' Set the version number
 	'-------------------------------------------------
-	sVersion = "1.05"
+	sVersion = "1.06"
 
 	'-------------------------------------------------
 	' Create a new menu
@@ -935,11 +940,6 @@ Sub CheckSelection
 	End If
 
 	'-------------------------------------------------
-	' Close the dialog
-	'-------------------------------------------------
-	Dialog Remove
-
-	'-------------------------------------------------
 	' Clear the log file
 	'-------------------------------------------------
 	If bClearLog = True Then
@@ -957,40 +957,6 @@ Sub CheckSelection
 	' Process the selection
 	'-------------------------------------------------
 	Call ProcessSelection
-
-	Call MyPrint("")
-	Call MyPrint("----------------------------------------------------------------------")
-	Call MyPrint("Process completed!")
-	Call MyPrint("----------------------------------------------------------------------")
-	Dim lResponse As Logical
-	lResponse = Ask("Processing complete!" + Chr$(10) + Chr$(10) + Chr$(10) + "Show log file?", "Yes", "No")
-
-	'-------------------------------------------------
-	' Ask the user if they want to see the log file
-	'-------------------------------------------------
-	If lResponse = True Then
-		'-------------------------------------------------
-		' Open the Message window and clear it
-		'-------------------------------------------------
-		Close Window Message
-		Open Window Message
-		Set Window Message
-			Position (7,4)
-			Width 7
-			Height 5
-		Print(chr$(12))
-
-		'-------------------------------------------------
-		' Display the log file in the message window
-		'-------------------------------------------------
-		Call PrintLogFile
-
-	End If
-
-	'-------------------------------------------------
-	' Disconnect the connection to the SQL Server database
-	'-------------------------------------------------
-	Server nConn Disconnect
 
 End Sub
 
@@ -1275,21 +1241,56 @@ Sub ProcessSelection
 	End If
 
 	'-------------------------------------------------
-	' Replace any spaces in the table name with
-	' underscores and remove hyphens
+	' Remove the file extension from the output file name
 	'-------------------------------------------------
-	Dim sShortName As String
-	sShortName = Left$(sOutputName, Len(sOutputName) - 4)
-	sShortName = StringReplace(sShortName, " ", "_")
-	sShortName = StringReplace(sShortName, "-", "")
+	sOutputName = Left$(sOutputName, Len(sOutputName) - 4)
 
 	Call MyPrint("Output File = '" + sOutputFile + "'")
+
+	'-------------------------------------------------
+	' Close the dialog
+	'-------------------------------------------------
+	Dialog Remove
 
 	'-------------------------------------------------
 	' Call the subroutine to select the records from
 	' the selected table using the user's where clause
 	'-------------------------------------------------
-	Call SelectSpecies(nConn, sColumnNames, sWhereClause, sGroupClause, sOrderClause, sOutputPath, sShortName, sTableName)
+	Call SelectSpecies(nConn, sColumnNames, sWhereClause, sGroupClause, sOrderClause, sOutputPath, sOutputName, sTableName)
+
+	Call MyPrint("")
+	Call MyPrint("----------------------------------------------------------------------")
+	Call MyPrint("Process completed!")
+	Call MyPrint("----------------------------------------------------------------------")
+	Dim lResponse As Logical
+	lResponse = Ask("Processing complete!" + Chr$(10) + Chr$(10) + Chr$(10) + "Show log file?", "Yes", "No")
+
+	'-------------------------------------------------
+	' Ask the user if they want to see the log file
+	'-------------------------------------------------
+	If lResponse = True Then
+		'-------------------------------------------------
+		' Open the Message window and clear it
+		'-------------------------------------------------
+		Close Window Message
+		Open Window Message
+		Set Window Message
+			Position (7,4)
+			Width 7
+			Height 5
+		Print(chr$(12))
+
+		'-------------------------------------------------
+		' Display the log file in the message window
+		'-------------------------------------------------
+		Call PrintLogFile
+
+	End If
+
+	'-------------------------------------------------
+	' Disconnect the connection to the SQL Server database
+	'-------------------------------------------------
+	Server nConn Disconnect
 
 End Sub
 
@@ -1311,6 +1312,14 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	Dim sCmd As String
 
 	OnError Goto ErrorTrap
+
+	'-------------------------------------------------
+	' Replace any spaces in the table name with
+	' underscores and remove hyphens
+	'-------------------------------------------------
+	Dim sShortName As String
+	sShortName = StringReplace(sOutputName, " ", "_")
+	sShortName = StringReplace(sShortName, "-", "")
 
 	'-------------------------------------------------
 	' Setup the temporary and local table names
@@ -1409,7 +1418,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	Server nConn Link Table
 	sSQLStmt
 	Toolkit "ODBC"
-	Into sOutputName
+	Into sShortName
 	File sOutputPath + sOutputName
 	Autokey Off
 	ReadOnly
@@ -1504,7 +1513,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	Server nConn Link Table
 	sSQLStmt
 	Toolkit "ODBC"
-	Into sOutputName
+	Into sShortName
 	File sOutputPath + sOutputName
 	Autokey Off
 	ReadOnly
