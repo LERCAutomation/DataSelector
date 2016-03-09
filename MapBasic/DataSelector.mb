@@ -19,17 +19,26 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector v1.06
+'* DataSelector v1.08
 '*
 '* Creates a dialog window which lists the SQL tables
 '* in the remote SQL Server and allows the user to enter a
 '* where clause and group by and order by text to select a
 '* subset of the SQL records. It will then create a
-'* MapInfo .tab file, ArcGIS .shp file or Text .csv file
+'* MapInfo .tab file, ArcGIS .shp file, .txt or .csv file
 '* of the selected records.
 '*
 '* Created:			Andy Foy - June 2015
-'* Last revised:	Andy Foy - February 2016
+'* Last revised:	Andy Foy - March 2016
+'*
+'* *****************  Version 1.08  *****************
+'* Author: Andy Foy		Date: 09/03/2016
+'* A. Ask user if they want to keep the dialog open.
+'* B. Open log file using Notepad.exe.
+'*
+'* *****************  Version 1.07  *****************
+'* Author: Andy Foy		Date: 23/02/2016
+'* A. Enable Tab-separated .txt files to be created.
 '*
 '* *****************  Version 1.06  *****************
 '* Author: Andy Foy		Date: 16/02/2016
@@ -87,7 +96,7 @@ Sub Main
 	'-------------------------------------------------
 	' Set the version number
 	'-------------------------------------------------
-	sVersion = "1.06"
+	sVersion = "1.08"
 
 	'-------------------------------------------------
 	' Create a new menu
@@ -395,7 +404,7 @@ Sub OpenDialog
 		Position 190,67
 	Control PopupMenu
 		ID 6
-		Title "MapInfo (.tab) file;ESRI (.shp) file;Comma-Separated (.csv) file"
+		Title "MapInfo (.tab) file;ESRI (.shp) file;Tab-Separated (.txt) file;Comma-Separated (.csv) file"
 		Position 190,77
 		Width 120
 		Value 1
@@ -659,7 +668,7 @@ Sub DialogSetup
 
 SetDefaults:
 	'-------------------------------------------------
-	' Set the default value for the zip checkbox
+	' Set the default value for the output format
 	'-------------------------------------------------
 	Do Case UCase$(sDefaultFormat)
 		Case "TAB"
@@ -668,6 +677,8 @@ SetDefaults:
 			Alter Control 6 Value 2
 		Case "CSV"
 			Alter Control 6 Value 3
+		Case "TXT"
+			Alter Control 6 Value 4
 		Case Else
 			Alter Control 6 Value 1
 	End Case
@@ -1195,6 +1206,9 @@ Sub ProcessSelection
 		Case 3
 			sOutputFormat = "csv"
 			Call MyPrint("Output Format = '.csv'")
+		Case 4
+			sOutputFormat = "txt"
+			Call MyPrint("Output Format = '.txt'")
 		Case Else
 			sOutputFormat = "tab"
 			Call MyPrint("Output Format = '.tab'")
@@ -1248,11 +1262,6 @@ Sub ProcessSelection
 	Call MyPrint("Output File = '" + sOutputFile + "'")
 
 	'-------------------------------------------------
-	' Close the dialog
-	'-------------------------------------------------
-	Dialog Remove
-
-	'-------------------------------------------------
 	' Call the subroutine to select the records from
 	' the selected table using the user's where clause
 	'-------------------------------------------------
@@ -1262,30 +1271,25 @@ Sub ProcessSelection
 	Call MyPrint("----------------------------------------------------------------------")
 	Call MyPrint("Process completed!")
 	Call MyPrint("----------------------------------------------------------------------")
-	Dim lResponse As Logical
-	lResponse = Ask("Processing complete!" + Chr$(10) + Chr$(10) + Chr$(10) + "Show log file?", "Yes", "No")
 
 	'-------------------------------------------------
-	' Ask the user if they want to see the log file
+	' Ask the user if they want to close the form
 	'-------------------------------------------------
+	Dim lResponse As Logical
+	lResponse = Ask("Processing complete!" + Chr$(10) + Chr$(10) + Chr$(10) + "Do you wish to close the form?", "Yes", "No")
+
 	If lResponse = True Then
 		'-------------------------------------------------
-		' Open the Message window and clear it
+		' Close the dialog
 		'-------------------------------------------------
-		Close Window Message
-		Open Window Message
-		Set Window Message
-			Position (7,4)
-			Width 7
-			Height 5
-		Print(chr$(12))
-
-		'-------------------------------------------------
-		' Display the log file in the message window
-		'-------------------------------------------------
-		Call PrintLogFile
+		Dialog Remove
 
 	End If
+
+	'-------------------------------------------------
+	' Display the log file in the message window
+	'-------------------------------------------------
+	Call PrintLogFile
 
 	'-------------------------------------------------
 	' Disconnect the connection to the SQL Server database
@@ -1606,13 +1610,32 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	' Export the table as a CSV if required
 	'-------------------------------------------------
 	If iOutputFormat = 3 Then
-		Call MyPrint("Exporting as a CSV ...")
+		Call MyPrint("Exporting as a CSV file ...")
 
 		Set ProgressBars Off
 
 		Export sTableAlias
 			Into sOutputPath + sOutputName + ".csv"
 			Type "CSV"
+			Titles
+			Overwrite
+
+		Set ProgressBars On
+
+	End If
+
+	'-------------------------------------------------
+	' Export the table as a TXT if required
+	'-------------------------------------------------
+	If iOutputFormat = 4 Then
+		Call MyPrint("Exporting as a TXT file ...")
+
+		Set ProgressBars Off
+
+		Export sTableAlias
+			Into sOutputPath + sOutputName + ".txt"
+			Type "ASCII"
+			CharSet "WindowsLatin1"
 			Titles
 			Overwrite
 
@@ -2290,10 +2313,10 @@ Sub AboutBox
 		Title "based on the SQL statements entered by the user and will"
 		Position 10,20
 	Control StaticText
-		Title "create a local MapInfo (.Tab) file, ESRI (.shp) file or"
+		Title "create a local MapInfo (.Tab) file, ESRI (.shp) file,"
 		Position 10,30
 	Control StaticText
-		Title "Comma-Separated Text (.csv) file."
+		Title "Tab-Separated (.txt) file or Comma-Separated (.csv) file."
 		Position 10,40
 	Control StaticText
 		Title "Created by Andy Foy Consulting."
@@ -2330,45 +2353,15 @@ End Sub
 
 Sub PrintLogFile()
 '***************************************************************
-'* Print the log file to the message window
+'* Open the log file in Notepad
 '***************************************************************
 
 	'-------------------------------------------------
-	' Open the log file for input
+	' Open the log file in Notepad
 	'-------------------------------------------------
-	Open File sLogFileName For Input As #99
-
-	'-------------------------------------------------
-	' Get the first line
-	'-------------------------------------------------
-	Dim sMsg As String
-	Line Input #99, sMsg
-
-	'-------------------------------------------------
-	' Loop through all the lines until the log file
-	' is empty
-	'-------------------------------------------------
-	Do Until EOF(99)
-		'-------------------------------------------------
-		' Print the log file line to the message window
-		'-------------------------------------------------
-		Print sMsg
-
-		'-------------------------------------------------
-		' Get the next line
-		'-------------------------------------------------
-		Line Input #99, sMsg
-	Loop
-
-	'-------------------------------------------------
-	' Refresh the message window
-	'-------------------------------------------------
-	Update Window WIN_MESSAGE
-
-	'-------------------------------------------------
-	' Close the log file
-	'-------------------------------------------------
-	Close File #99
+	Dim sCmd As String
+	sCmd = "Run Program " +  + Chr$(34) + "NotePad.exe " + sLogFileName + Chr$(34)
+	Run Command (sCmd)
 
 End Sub
 
