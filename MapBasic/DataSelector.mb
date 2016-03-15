@@ -404,7 +404,7 @@ Sub OpenDialog
 		Position 190,67
 	Control PopupMenu
 		ID 6
-		Title "MapInfo (.tab) file;ESRI (.shp) file;Tab-Separated (.txt) file;Comma-Separated (.csv) file"
+		Title "MapInfo (.tab) file;ESRI (.shp) file;Comma-Separated (.csv) file;Tab-Separated (.txt) file"
 		Position 190,77
 		Width 120
 		Value 1
@@ -932,6 +932,13 @@ Sub CheckSelection
 	bDeletePlotColumns = ReadControlValue(40)
 
 	'-------------------------------------------------
+	' Don't plot records for non-spatial output formats
+	'-------------------------------------------------
+	If iOutputFormat > 2 Then
+		bPlotSpatialData = False
+	End If
+
+	'-------------------------------------------------
 	' Check if the user has selected at least one table
 	' from the species table list
 	'-------------------------------------------------
@@ -985,6 +992,13 @@ Sub SetSpatialColumns
 	iSQLTable = ReadControlValue(5)
 
 	'-------------------------------------------------
+	' Check what format the user has selected for
+	' the output file.
+	'-------------------------------------------------
+	Dim iFileFormat As Integer
+	iFileFormat = ReadControlValue(6)
+
+	'-------------------------------------------------
 	' Check if the user has ticked the plot data
 	' spatially checkbox.
 	'-------------------------------------------------
@@ -1002,9 +1016,13 @@ Sub SetSpatialColumns
 		' checkbox then clear the column names.
 		'-------------------------------------------------
 		If iPlotData = 1 then
-			Alter Control 22 Title ""
-			Alter Control 24 Title ""
-			Alter Control 26 Title ""
+			If iFileFormat = 1 Or iFileFormat = 2 then
+				If bEnablePlotting = True then
+					Alter Control 22 Title ""
+					Alter Control 24 Title ""
+					Alter Control 26 Title ""
+				End If
+			End If
 		End If
 
 		Exit Sub
@@ -1062,9 +1080,13 @@ Sub SetSpatialColumns
 		' Update the spatial column popup lists to
 		' show the column names
 		'-------------------------------------------------
-		Alter Control 22 Title FROM Variable aSQLColumns
-		Alter Control 24 Title FROM Variable aSQLColumns
-		Alter Control 26 Title FROM Variable aSQLColumns
+		If iFileFormat = 1 Or iFileFormat = 2 then
+			If bEnablePlotting = True then
+				Alter Control 22 Title FROM Variable aSQLColumns
+				Alter Control 24 Title FROM Variable aSQLColumns
+				Alter Control 26 Title FROM Variable aSQLColumns
+			End If
+		End If
 
 		'-------------------------------------------------
 		' Try and set the default values
@@ -1133,19 +1155,19 @@ Sub SetFileFormat
 			Alter Control 27 Show
 			Alter Control 28 Show
 			Alter Control 40 Show
-		Else
-			Alter Control 12 Hide
-			Alter Control 20 Hide
-			Alter Control 21 Hide
-			Alter Control 22 Hide
-			Alter Control 23 Hide
-			Alter Control 24 Hide
-			Alter Control 25 Hide
-			Alter Control 26 Hide
-			Alter Control 27 Hide
-			Alter Control 28 Hide
-			Alter Control 40 Hide
 		End If
+	Else
+		Alter Control 12 Hide
+		Alter Control 20 Hide
+		Alter Control 21 Hide
+		Alter Control 22 Hide
+		Alter Control 23 Hide
+		Alter Control 24 Hide
+		Alter Control 25 Hide
+		Alter Control 26 Hide
+		Alter Control 27 Hide
+		Alter Control 28 Hide
+		Alter Control 40 Hide
 	End If
 
 End Sub
@@ -1635,6 +1657,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 		Export sTableAlias
 			Into sOutputPath + sOutputName + ".txt"
 			Type "ASCII"
+			Delimiter ","
 			CharSet "WindowsLatin1"
 			Titles
 			Overwrite
