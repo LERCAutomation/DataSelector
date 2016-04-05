@@ -70,10 +70,10 @@ as a spreadsheet.
 	<value>2</value>
   </DefaultSymbologySet>
 
-  <!-- Whether the SQL database tables are spatially enabled -->
-  <EnableSpatialPlotting>
+  <!-- The default for whether the SQL database tables will be spatially plotted -->
+  <DefaultSpatialPlotting>
 	<value>No</value>
-  </EnableSpatialPlotting>
+  </DefaultSpatialPlotting>
 
   <!-- The coordinate system for mapping tables -->
   <CoordinateSystem>

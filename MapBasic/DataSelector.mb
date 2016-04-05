@@ -19,7 +19,7 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector v1.08
+'* DataSelector v1.09
 '*
 '* Creates a dialog window which lists the SQL tables
 '* in the remote SQL Server and allows the user to enter a
@@ -29,7 +29,13 @@
 '* of the selected records.
 '*
 '* Created:			Andy Foy - June 2015
-'* Last revised:	Andy Foy - March 2016
+'* Last revised:	Andy Foy - April 2016
+'*
+'* *****************  Version 1.09  *****************
+'* Author: Andy Foy		Date: 05/04/2016
+'* A. Fix premature disconnection error when dialog
+'*    remains open.
+'* B. Set default value for spatial plotting.
 '*
 '* *****************  Version 1.08  *****************
 '* Author: Andy Foy		Date: 09/03/2016
@@ -96,7 +102,7 @@ Sub Main
 	'-------------------------------------------------
 	' Set the version number
 	'-------------------------------------------------
-	sVersion = "1.08"
+	sVersion = "1.09"
 
 	'-------------------------------------------------
 	' Create a new menu
@@ -193,9 +199,11 @@ Sub GetDefaultValues
 					sDefaultSymbologySet = GetSingleNodeValue(hXMLNode, "DefaultSymbologySet")
 
 					' Whether the SQL database tables can be spatially plotted
-					Dim sEnableSpatial As String
-					sEnableSpatial = GetSingleNodeValue(hXMLNode, "EnableSpatialPlotting")
-					If UCase$(sEnableSpatial) = "Y" OR UCase$(sEnableSpatial) = "YES" Then
+					sDefaultSpatialPlotting = GetSingleNodeValue(hXMLNode, "DefaultSpatialPlotting")
+					If UCase$(sDefaultSpatialPlotting) = "Y"
+					OR UCase$(sDefaultSpatialPlotting) = "YES"
+					OR UCase$(sDefaultSpatialPlotting) = "N"
+					OR UCase$(sDefaultSpatialPlotting) = "NO" Then
 						bEnablePlotting = True
 					Else
 						bEnablePlotting = False
@@ -652,18 +660,31 @@ Sub DialogSetup
 	'-------------------------------------------------
 	' Show or hide the spatial controls
 	'-------------------------------------------------
-	If bEnablePlotting = True Then
+	If bEnablePlotting Then
 		Alter Control 12 Show
-		Alter Control 20 Show
-		Alter Control 21 Show
-		Alter Control 22 Show
-		Alter Control 23 Show
-		Alter Control 24 Show
-		Alter Control 25 Show
-		Alter Control 26 Show
-		Alter Control 27 Show
-		Alter Control 28 Show
-		Alter Control 40 Show
+		If UCase$(sDefaultSpatialPlotting) = "Y" OR UCase$(sDefaultSpatialPlotting) = "YES" Then
+			Alter Control 20 Show
+			Alter Control 21 Show
+			Alter Control 22 Show
+			Alter Control 23 Show
+			Alter Control 24 Show
+			Alter Control 25 Show
+			Alter Control 26 Show
+			Alter Control 27 Show
+			Alter Control 28 Show
+			Alter Control 40 Show
+		Else
+			Alter Control 20 Hide
+			Alter Control 21 Hide
+			Alter Control 22 Hide
+			Alter Control 23 Hide
+			Alter Control 24 Hide
+			Alter Control 25 Hide
+			Alter Control 26 Hide
+			Alter Control 27 Hide
+			Alter Control 28 Hide
+			Alter Control 40 Hide
+		End If
 	End If
 
 SetDefaults:
@@ -692,9 +713,10 @@ SetDefaults:
 	End If
 
 	'-------------------------------------------------
-	' Set the default maximum point precision
+	' Set the default spatial plotting checkbox
+	' and maximum point precision
 	'-------------------------------------------------
-	If bEnablePlotting = True Then
+	If UCase$(sDefaultSpatialPlotting) = "Y" OR UCase$(sDefaultSpatialPlotting) = "YES" Then
 		Alter Control 12 Value TRUE
 		Alter Control 28 Value Str$(val(sDefaultPointPrecision))
 	End If
@@ -1204,6 +1226,25 @@ Sub SetPlotData
 		Alter Control 27 Hide
 		Alter Control 28 Hide
 		Alter Control 40 Hide
+	End If
+
+	'-------------------------------------------------
+	' Set the default maximum point precision
+	'-------------------------------------------------
+	If iPlotData = 1 then
+		Dim sPointsPrecision As String
+		sPointsPrecision = ReadControlValue(28)
+		If sPointsPrecision = "" Then
+			Alter Control 28 Value Str$(val(sDefaultPointPrecision))
+		End If
+	End If
+
+	'-------------------------------------------------
+	' Set the spatial column popup lists based on any
+	' selected table name.
+	'-------------------------------------------------
+	If iPlotData = 1 then
+		Call SetSpatialColumns
 	End If
 
 End Sub

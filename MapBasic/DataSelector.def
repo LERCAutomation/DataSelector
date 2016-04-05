@@ -282,7 +282,7 @@ Global sDefaultSchema As String
 Global sTableListSQL As String
 Global sLogFileName As String
 Global sDefaultSymbologySet As String
-Global bEnablePlotting As Logical
+Global sDefaultSpatialPlotting As String
 Global sCoordSys As String
 Global sDefaultPointPrecision As String
 Global sXColumn As String
@@ -294,6 +294,7 @@ Global aSQLColumns(99) As String
 Global aSymbolNodes(99) As String
 Global aSymbolDescs(99) As String
 
+Global bEnablePlotting As Logical
 Global iExtractTot As Integer
 Global iExtractCnt As Integer
 Global iSQLTable As Integer
