@@ -435,27 +435,27 @@ Sub OpenDialog
 		'Into iSymbologySet
 
 	'-------------------------------------------------
-	' Add a group box for non-spatial data
-	'-------------------------------------------------
-	Control GroupBox
-		ID 20
-		Title "Non-spatial data"
-		Position 185,137
-		Height 143
-		Width 125
-		Hide
-
-	'-------------------------------------------------
 	' Add a checkbox for plotting spatially
 	'-------------------------------------------------
 	Control CheckBox
 		ID 12
 		Title "Plot data spatially?"
-		Position 190,153
+		Position 190,140
 		Value FALSE
 		Hide
 		'Into bPlotSpatialData
 		Calling SetPlotData
+
+	'-------------------------------------------------
+	' Add a group box for non-spatial data
+	'-------------------------------------------------
+	Control GroupBox
+		ID 20
+		Title "Non-spatial data"
+		Position 185,157
+		Height 123
+		Width 125
+		Hide
 
 	'-------------------------------------------------
 	' Add a popup menu for the X Column
@@ -1207,6 +1207,7 @@ Sub SetPlotData
 	Dim iPlotData As Integer
 	iPlotData = ReadControlValue(12)
 	If iPlotData = 1 then
+		Alter Control 20 Show
 		Alter Control 21 Show
 		Alter Control 22 Show
 		Alter Control 23 Show
@@ -1217,6 +1218,7 @@ Sub SetPlotData
 		Alter Control 28 Show
 		Alter Control 40 Show
 	Else
+		Alter Control 20 Hide
 		Alter Control 21 Hide
 		Alter Control 22 Hide
 		Alter Control 23 Hide
