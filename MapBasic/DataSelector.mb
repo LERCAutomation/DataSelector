@@ -1700,7 +1700,6 @@ Sub SelectSpecies (ByVal nConn As Integer,
 		Export sTableAlias
 			Into sOutputPath + sOutputName + ".txt"
 			Type "ASCII"
-			Delimiter ","
 			CharSet "WindowsLatin1"
 			Titles
 			Overwrite
