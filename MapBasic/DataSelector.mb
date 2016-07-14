@@ -19,7 +19,7 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector v1.09
+'* DataSelector v1.0.12
 '*
 '* Creates a dialog window which lists the SQL tables
 '* in the remote SQL Server and allows the user to enter a
@@ -29,7 +29,21 @@
 '* of the selected records.
 '*
 '* Created:			Andy Foy - June 2015
-'* Last revised:	Andy Foy - April 2016
+'* Last revised:	Andy Foy - July 2016
+'*
+'* *****************  Version 1.0.12  ***************
+'* Author: Andy Foy		Date: 14/07/2016
+'* A. Enable separate instances for tool to run under
+'*    different names in Tool menu.
+'*
+'* *****************  Version 1.0.11  ***************
+'* Author: Andy Foy		Date: 12/07/2016
+'* A. Autofill file name when saving a previously
+'*    opened query.
+'*
+'* *****************  Version 1.0.10  ***************
+'* Author: Andy Foy		Date: 30/05/2016
+'* A. Change version number to 3 parts.
 '*
 '* *****************  Version 1.09  *****************
 '* Author: Andy Foy		Date: 05/04/2016
@@ -102,23 +116,108 @@ Sub Main
 	'-------------------------------------------------
 	' Set the version number
 	'-------------------------------------------------
-	sVersion = "1.09"
+	sVersion = "1.0.12"
+
+	'-------------------------------------------------
+	' Get the title for the Tool menu
+	'-------------------------------------------------
+	Call GetToolTitle
 
 	'-------------------------------------------------
 	' Create a new menu
 	'-------------------------------------------------
-	Create Menu "&Data Selector" As
-	   "&Run Data Selector ..." Calling OpenDialog,
+	Create Menu "&" & sToolTitle As
+	   "&Run " & sToolTitle & " ..." Calling OpenDialog,
 	   "(-",
-	   "&About Data Selector ..." Calling AboutBox,
-	   "E&xit Data Selector" Calling egsit
+	   "&About " & sToolTitle & " ..." Calling AboutBox,
+	   "E&xit " & sToolTitle Calling egsit
 
 	'-------------------------------------------------
 	' Add the new menu item to the Tools menu
 	'-------------------------------------------------
 	Alter Menu "Tools" Add
-		"Data Selector" As "Data Selector"
+		sToolTitle As sToolTitle
 
+	Exit Sub
+
+End Sub
+
+Sub GetToolTitle
+'***************************************************************
+'* Retrieve the tool title to use from the config file
+'* which is a XML document
+'***************************************************************
+
+	Dim bParseError As SmallInt
+	Dim hXMLDoc As MIXmlDocument
+	Dim hXMLRoot As MIXmlNode
+	Dim hXMLNode As MIXmlNode
+
+	OnError Goto GetTitleError
+
+	' Set the default Tool menu title
+	sToolTitle = "Data Selector"
+
+	'-------------------------------------------------
+	' Create a document handle
+	'-------------------------------------------------
+	hXMLDoc = MIXmlDocumentCreate()
+	If hXMLDoc Then
+
+		'-------------------------------------------------
+		' Load the document into the document handle
+		'-------------------------------------------------
+		Dim iXMLLoad As SmallInt
+		iXMLLoad = MIXmlDocumentLoad(hXMLDoc, ApplicationDirectory$() + "DataSelector.xml", bParseError, FALSE, FALSE)
+		if iXMLLoad > 0 Then
+
+			'-------------------------------------------------
+			' Get a handle on the XML root node of the document
+			'-------------------------------------------------
+			hXMLRoot = MIXmlDocumentGetRootNode(hXMLDoc)
+			If hXMLRoot Then
+
+				'-------------------------------------------------
+				' Get a handle on the DataSelector node
+				'-------------------------------------------------
+				hXMLNode = MIXmlSelectSingleNode(hXMLRoot, "DataSelector")
+	          	If hXMLNode Then
+	
+					'-------------------------------------------------
+					' Load the default values from the child nodes
+					' under the DataSelector node
+					'-------------------------------------------------
+					' Title for adding the program to the Tool menu
+					Dim sTitle As String
+					sTitle = GetSingleNodeValue(hXMLNode, "ToolTitle")
+					If sTitle <> "" Then
+						sToolTitle = sTitle
+					End If
+
+				End If
+
+			End If
+
+		Else
+
+			Goto GetTitleError
+
+		End If
+
+	End If
+
+CleanUp:
+	'-------------------------------------------------
+	' Destroy the handles
+	'-------------------------------------------------
+	If hXMLNode Then Call MIXmlNodeDestroy(hXMLNode) End If
+	If hXMLRoot Then Call MIXmlNodeDestroy(hXMLRoot) End If
+	If hXMLDoc Then Call MIXmlDocumentDestroy(hXMLDoc) End If
+
+	Exit Sub
+
+GetTitleError:
+	Note "Unable to get tool title from XML config file.  Using default title 'Data Selector'."
 	Exit Sub
 
 End Sub
@@ -280,7 +379,7 @@ Sub GetDefaultValues
 
 		Else
 
-			Note "Error : " + MIGetErrorMessage()
+			Note "Error opening XML config file 'DataSelector.xml'."
 
 		End If
 
@@ -573,7 +672,7 @@ Done:
 	
 ErrorTrap:
 	Note str$(Err()) + ": " + Error$()
-	Call MyPrint(str$(Err()) + ": " + Error$())
+	Call MyPrint("Error: " + str$(Err()) + " - " + Error$())
 	Resume Done
 
 End Sub
@@ -721,6 +820,11 @@ SetDefaults:
 		Alter Control 28 Value Str$(val(sDefaultPointPrecision))
 	End If
 
+	'-------------------------------------------------
+	' Clear the name of the query file
+	'-------------------------------------------------
+	sCurrentQueryName = ""
+
 Exit Sub
 
 ConnectionError:
@@ -742,7 +846,7 @@ Sub SaveQuery
 	' Prompt the user for the query file destination
 	'-------------------------------------------------
 	Dim sQueryFile As String
-	sQueryFile = FileSaveAsDlg(sDefaultQueryPath, "", "qsf", "Select where to save the query")
+	sQueryFile = FileSaveAsDlg(sDefaultQueryPath, sCurrentQueryName, "qsf", "Select where to save the query")
 	if sQueryFile = "" then
 		Note "No query file selected - save cancelled"
 		Exit Sub
@@ -808,6 +912,11 @@ Sub SaveQuery
 	' Close the query file
 	'-------------------------------------------------
 	Close File #5
+
+	'-------------------------------------------------
+	' Store the name of the query file
+	'-------------------------------------------------
+	sCurrentQueryName = sQueryName
 
 End Sub
 
@@ -927,6 +1036,11 @@ Sub LoadQuery
 	Alter Control 2 Value sWhere
 	Alter Control 3 Value sGroup
 	Alter Control 4 Value sOrder
+
+	'-------------------------------------------------
+	' Store the name of the query file
+	'-------------------------------------------------
+	sCurrentQueryName = sQueryName
 
 End Sub
 

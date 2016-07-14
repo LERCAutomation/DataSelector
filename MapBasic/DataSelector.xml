@@ -24,6 +24,11 @@ as a spreadsheet.
 <configuration>
 <DataSelector>
 
+  <!-- The title to use for the program in the Tool menu -->
+  <ToolTitle>
+	<value>Data Selector</value>
+  </ToolTitle>
+
   <!-- The existing file location where log files will be saved with output messages -->
   <LogFilePath>
 	<value>D:\Andy\GiGL\Data Selector\Logs</value>

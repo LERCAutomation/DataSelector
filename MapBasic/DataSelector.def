@@ -83,6 +83,7 @@ Define MIWEBSERVICES_LIB_NAME "GmlXlat.dll"
 ' Declare the subroutines
 '-------------------------------------------------
 Declare Sub Main
+Declare Sub GetToolTitle
 Declare Sub GetDefaultValues
 Declare Sub OpenDialog
 Declare Sub DialogSetup
@@ -274,6 +275,8 @@ Declare Function MIGetErrorCode Lib MIWEBSERVICES_LIB_NAME
 '-------------------------------------------------
 Global sVersion As String
 Global sUserId As String
+Global sToolTitle As String
+
 Global sDefaultExtractPath As String
 Global sDefaultQueryPath As String
 Global sDefaultFormat As String
@@ -315,3 +318,5 @@ Global sColumnNames As String
 Global bPlotSpatialData As Logical
 Global sMaxPointsPrecision As String
 Global bDeletePlotColumns As Logical
+
+Global sCurrentQueryName As String
