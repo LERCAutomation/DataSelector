@@ -103,6 +103,11 @@ as a spreadsheet.
 	<value>100</value>
   </DefaultPointsPrecision>
   
+  <!-- The User interface dialog size ("Norm" or "Max") -->
+  <DialogSize>
+	<value>Max</value>
+  </DialogSize>
+
   <!-- The symbology sets available for applying to any MapInfo .tab outputs -->
   <MapInfoTables>
 	<SymbolSet1 Desc="Standard Points/Polygons">

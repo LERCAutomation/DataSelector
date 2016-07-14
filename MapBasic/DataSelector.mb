@@ -19,7 +19,7 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector v1.0.12
+'* DataSelector v1.0.13
 '*
 '* Creates a dialog window which lists the SQL tables
 '* in the remote SQL Server and allows the user to enter a
@@ -30,6 +30,11 @@
 '*
 '* Created:			Andy Foy - June 2015
 '* Last revised:	Andy Foy - July 2016
+'*
+'* *****************  Version 1.0.13  ***************
+'* Author: Andy Foy		Date: 14/07/2016
+'* A. Created 'max' size dialog option for users who
+'*    want to see more SQL text at once.
 '*
 '* *****************  Version 1.0.12  ***************
 '* Author: Andy Foy		Date: 14/07/2016
@@ -116,7 +121,7 @@ Sub Main
 	'-------------------------------------------------
 	' Set the version number
 	'-------------------------------------------------
-	sVersion = "1.0.12"
+	sVersion = "1.0.13"
 
 	'-------------------------------------------------
 	' Get the title for the Tool menu
@@ -314,6 +319,9 @@ Sub GetDefaultValues
 					' Default setting for the points precision
 					sDefaultPointPrecision = GetSingleNodeValue(hXMLNode, "DefaultPointsPrecision")
 
+					' User interface dialog size
+					sDialogSize = GetSingleNodeValue(hXMLNode, "DialogSize")
+
 					'-------------------------------------------------
 					' Get a handle on the DefaultSpatialColumns node
 					'-------------------------------------------------
@@ -428,12 +436,22 @@ Sub OpenDialog
 	Call GetDefaultValues
 
 	'-------------------------------------------------
+	' Maximise the dialog size if required
+	'-------------------------------------------------
+	Dim iDialogMax As Integer
+	If UCASE$(sDialogSize) = "MAX" Then
+		iDialogMax = 160
+	Else
+		iDialogMax = 0
+	End If
+
+	'-------------------------------------------------
 	' Build a new dialog window
 	'-------------------------------------------------
 	Dialog
 		Title "Data Selector " + sVersion
-		Width 320
-		Height 310
+		Width 320 + iDialogMax
+		Height 310 + iDialogMax
 		Position 50,70
 		Calling DialogSetup
 
@@ -446,8 +464,8 @@ Sub OpenDialog
 	Control EditText
 		ID 1
 		Position 10,20
-		Height 105
-		Width 170
+		Height 105 + (iDialogMax * 0.5)
+		Width 170 + iDialogMax
 		'Into sColumnNames
 
 	'-------------------------------------------------
@@ -455,12 +473,12 @@ Sub OpenDialog
 	'-------------------------------------------------
 	Control StaticText
 		Title "Where:"
-		Position 10,130
+		Position 10,130 + (iDialogMax * 0.5)
 	Control EditText
 		ID 2
-		Position 10,140
-		Height 50
-		Width 170
+		Position 10,140 + (iDialogMax * 0.5)
+		Height 50 + (iDialogMax * 0.25)
+		Width 170 + iDialogMax
 		'Into sWhereClause
 
 	'-------------------------------------------------
@@ -468,12 +486,12 @@ Sub OpenDialog
 	'-------------------------------------------------
 	Control StaticText
 		Title "Group By:"
-		Position 10,195
+		Position 10,195 + (iDialogMax * 0.75)
 	Control EditText
 		ID 3
-		Position 10,205
-		Height 30
-		Width 170
+		Position 10,205 + (iDialogMax * 0.75)
+		Height 30 + (iDialogMax * 0.125)
+		Width 170 + iDialogMax
 		'Into sGroupClause
 
 	'-------------------------------------------------
@@ -481,12 +499,12 @@ Sub OpenDialog
 	'-------------------------------------------------
 	Control StaticText
 		Title "Order By:"
-		Position 10,240
+		Position 10,240 + (iDialogMax * 0.875)
 	Control EditText
 		ID 4
-		Position 10,250
-		Height 30
-		Width 170
+		Position 10,250 + (iDialogMax * 0.875)
+		Height 30 + (iDialogMax * 0.125)
+		Width 170 + iDialogMax
 		'Into sOrderClause
 
 	'-------------------------------------------------
@@ -494,12 +512,12 @@ Sub OpenDialog
 	'-------------------------------------------------
 	Control StaticText
 		Title "SQL Tables:"
-		Position 190,10
+		Position 190 + iDialogMax,10
 	Control ListBox
 		ID 5
 		Title ""
-		Position 190, 20
-		Height 40
+		Position 190 + iDialogMax, 20
+		Height 40 + (iDialogMax * 0.5)
 		Width 120
 		Calling SetSpatialColumns
 
@@ -508,11 +526,11 @@ Sub OpenDialog
 	'-------------------------------------------------
 	Control StaticText
 		Title "Output File Format:"
-		Position 190,67
+		Position 190 + iDialogMax,67 + (iDialogMax * 0.5)
 	Control PopupMenu
 		ID 6
 		Title "MapInfo (.tab) file;ESRI (.shp) file;Comma-Separated (.csv) file;Tab-Separated (.txt) file"
-		Position 190,77
+		Position 190 + iDialogMax,77 + (iDialogMax * 0.5)
 		Width 120
 		Value 1
 		'Into iOutputFormat
@@ -524,11 +542,11 @@ Sub OpenDialog
 	Control StaticText
 		ID 30
 		Title "Symbology Set:"
-		Position 190,102
+		Position 190 + iDialogMax,102 + (iDialogMax * 0.5)
 	Control PopupMenu
 		ID 31
 		Title "<None>"
-		Position 190,112
+		Position 190 + iDialogMax,112 + (iDialogMax * 0.5)
 		Width 120
 		Value 1
 		'Into iSymbologySet
@@ -539,7 +557,7 @@ Sub OpenDialog
 	Control CheckBox
 		ID 12
 		Title "Plot data spatially?"
-		Position 190,140
+		Position 190 + iDialogMax,140 + (iDialogMax * 0.5)
 		Value FALSE
 		Hide
 		'Into bPlotSpatialData
@@ -551,7 +569,7 @@ Sub OpenDialog
 	Control GroupBox
 		ID 20
 		Title "Non-spatial data"
-		Position 185,157
+		Position 185 + iDialogMax,157 + (iDialogMax * 0.5)
 		Height 123
 		Width 125
 		Hide
@@ -562,11 +580,11 @@ Sub OpenDialog
 	Control StaticText
 		ID 21
 		Title "X Col:"
-		Position 190,175
+		Position 190 + iDialogMax,175 + (iDialogMax * 0.5)
 		Hide
 	Control PopUpMenu
 		ID 22
-		Position 230,173
+		Position 230 + iDialogMax,173 + (iDialogMax * 0.5)
 		Width 75
 		Title ""
 		Hide
@@ -577,11 +595,11 @@ Sub OpenDialog
 	Control StaticText
 		ID 23
 		Title "Y Col:"
-		Position 190,195
+		Position 190 + iDialogMax,195 + (iDialogMax * 0.5)
 		Hide
 	Control PopUpMenu
 		ID 24
-		Position 230,193
+		Position 230 + iDialogMax,193 + (iDialogMax * 0.5)
 		Width 75
 		Title ""
 		Hide
@@ -592,11 +610,11 @@ Sub OpenDialog
 	Control StaticText
 		ID 25
 		Title "Size Col:"
-		Position 190,215
+		Position 190 + iDialogMax,215 + (iDialogMax * 0.5)
 		Hide
 	Control PopUpMenu
 		ID 26
-		Position 230,213
+		Position 230 + iDialogMax,213 + (iDialogMax * 0.5)
 		Width 75
 		Title ""
 		Hide
@@ -607,11 +625,11 @@ Sub OpenDialog
 	Control StaticText
 		ID 27
 		Title "Max Points Precision:"
-		Position 190,240
+		Position 190 + iDialogMax,240 + (iDialogMax * 0.5)
 		Hide
 	Control EditText
 		ID 28
-		Position 265,238
+		Position 265 + iDialogMax,238 + (iDialogMax * 0.5)
 		Height 14
 		Width 40
 		Hide
@@ -623,7 +641,7 @@ Sub OpenDialog
 	Control CheckBox
 		ID 40
 		Title "Delete columns after plotting?"
-		Position 190,263
+		Position 190 + iDialogMax,263 + (iDialogMax * 0.5)
 		Value FALSE
 		Hide
 		'Into bDeletePlotColumns
@@ -634,7 +652,7 @@ Sub OpenDialog
 	Control CheckBox
 		ID 8
 		Title "Clear log file?"
-		Position 10,290
+		Position 10,290 + iDialogMax
 		Value TRUE
 		'Into bClearLog
 
@@ -644,13 +662,13 @@ Sub OpenDialog
 	Control Button
 		ID 9
 		Title "Save"
-		Position 95,290
+		Position 95 + iDialogMax,290 + iDialogMax
 		Width 40
 		Calling SaveQuery
 	Control Button
 		ID 10
 		Title "Load"
-		Position 140,290
+		Position 140 + iDialogMax,290 + iDialogMax
 		Width 40
 		Calling LoadQuery
 
@@ -658,12 +676,12 @@ Sub OpenDialog
 	' Add Ok and Cancel buttons
 	'-------------------------------------------------
 	Control CancelButton
-		Position 225,290
+		Position 225 + iDialogMax,290 + iDialogMax
 		Width 40
 	Control Button
 		ID 11
 		Title "Ok"
-		Position 270,290
+		Position 270 + iDialogMax,290 + iDialogMax
 		Width 40
 		Calling CheckSelection
 
