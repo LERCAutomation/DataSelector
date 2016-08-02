@@ -29,7 +29,12 @@
 '* of the selected records.
 '*
 '* Created:			Andy Foy - June 2015
-'* Last revised:	Andy Foy - July 2016
+'* Last revised:	Andy Foy - August 2016
+'*
+'* *****************  Version 1.0.14  ***************
+'* Author: Andy Foy		Date: 01/08/2016
+'* A. Fix bug when dropping unnecessary style and 
+'*    primary index columns.
 '*
 '* *****************  Version 1.0.13  ***************
 '* Author: Andy Foy		Date: 14/07/2016
@@ -121,7 +126,7 @@ Sub Main
 	'-------------------------------------------------
 	' Set the version number
 	'-------------------------------------------------
-	sVersion = "1.0.13"
+	sVersion = "1.0.14"
 
 	'-------------------------------------------------
 	' Get the title for the Tool menu
@@ -1758,6 +1763,8 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	'-------------------------------------------------
 	Server nStmt3 Close
 
+	Set ProgressBars Off
+
 	'-------------------------------------------------
 	' If the local table contains a MI_STYLE
 	' column then delete the column
@@ -1765,7 +1772,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	Dim sDropColumns As String
 	sDropColumns = ""
 	If ColumnExists(sTableAlias, "MI_STYLE") Then
-		sDropColumns = "MI_STYLE"
+		Alter Table sTableAlias (Drop MI_STYLE)
 	End If
 
 	'-------------------------------------------------
@@ -1773,11 +1780,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	' column then delete the column
 	'-------------------------------------------------
 	If ColumnExists(sTableAlias, "MI_PRINX") Then
-		If sDropColumns = "" Then
-			sDropColumns = "MI_PRINX"
-		Else
-			sDropColumns = sDropColumns + ", MI_PRINX"
-		End If
+		Alter Table sTableAlias (Drop MI_PRINX)
 	End If
 
 	'-------------------------------------------------
@@ -1785,20 +1788,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	' column then delete the column
 	'-------------------------------------------------
 	If ColumnExists(sTableAlias, "MI_SQL_REC_NUM") Then
-		If sDropColumns = "" Then
-			sDropColumns = "MI_SQL_REC_NUM"
-		Else
-			sDropColumns = sDropColumns + ", MI_SQL_REC_NUM"
-		End If
-	End If
-
-	'-------------------------------------------------
-	' Drop the unwanted columns
-	'-------------------------------------------------
-	Set ProgressBars Off
-
-	If sDropColumns <> "" Then
-		Alter Table sTableAlias (Drop sDropColumns)
+		Alter Table sTableAlias (Drop MI_SQL_REC_NUM)
 	End If
 
 	Set ProgressBars On
