@@ -19,7 +19,7 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector v1.0.13
+'* DataSelector v1.0.15
 '*
 '* Creates a dialog window which lists the SQL tables
 '* in the remote SQL Server and allows the user to enter a
@@ -29,7 +29,12 @@
 '* of the selected records.
 '*
 '* Created:			Andy Foy - June 2015
-'* Last revised:	Andy Foy - August 2016
+'* Last revised:	Andy Foy - November 2016
+'*
+'* *****************  Version 1.0.15  ***************
+'* Author: Andy Foy		Date: 26/11/2016
+'* A. Double-click SQL table to paste list of columns
+'*    into columns clause.
 '*
 '* *****************  Version 1.0.14  ***************
 '* Author: Andy Foy		Date: 01/08/2016
@@ -126,7 +131,7 @@ Sub Main
 	'-------------------------------------------------
 	' Set the version number
 	'-------------------------------------------------
-	sVersion = "1.0.14"
+	sVersion = "1.0.15"
 
 	'-------------------------------------------------
 	' Get the title for the Tool menu
@@ -1188,11 +1193,11 @@ Sub SetSpatialColumns
 
 	End If
 
-	Dim sTableName As String
+	Dim sTableName As String, sSQLColumns As String
 	sTableName = aSQLTables(iSQLTable)
 
 	'-------------------------------------------------
-	' Query all the tables in the database
+	' Query all the columns in the table
 	'-------------------------------------------------
 	Dim nStmt as Integer
 	Dim sColumnListSQL As String
@@ -1202,24 +1207,30 @@ Sub SetSpatialColumns
 	'-------------------------------------------------
 	' Bind to the 1st column of the results
 	'-------------------------------------------------
-	Dim aSQLColumn As String
+	Dim sSQLColumn As String
 	Dim iStatus As Integer
-	Server nStmt Bind Column 1 To aSQLColumn, iStatus
+	Server nStmt Bind Column 1 To sSQLColumn, iStatus
 	Server nStmt Fetch Next
 
 	'-------------------------------------------------
 	' Loop through all the columns matching the
-	' SQL criteria and add them to the Species Tables list
+	' SQL criteria and add them to the columns list
 	'-------------------------------------------------
 	Dim i as integer
 	i = 1
 	While Not Server_Eot(nStmt)
 
 		'-------------------------------------------------
-		' Concatenate all the Species tables into an array
+		' Concatenate all the columns into an array
+		' and a string
 		'-------------------------------------------------
 		Redim aSQLColumns(i)
-		aSQLColumns(i) = aSQLColumn
+		aSQLColumns(i) = sSQLColumn
+		If sSQLColumns = "" Then
+			sSQLColumns = sSQLColumn
+		Else
+			sSQLColumns = sSQLColumns + ", " + sSQLColumn
+		End If
 		Server nStmt Fetch Next
 		i = i + 1
 
@@ -1229,6 +1240,37 @@ Sub SetSpatialColumns
 	' Close the query results
 	'-------------------------------------------------
 	Server nStmt Close
+
+	'-------------------------------------------------
+	' If the list is double-clicked then paste all
+	' the column names into the columns box.
+	'-------------------------------------------------
+	If CommandInfo(CMD_INFO_DLG_DBL) Then
+		'-------------------------------------------------
+		' Read the existing columns clause
+		'-------------------------------------------------
+		Dim sFields As String
+		sFields = ReadControlValue(1)
+		If sFields <> "" Then
+			'-------------------------------------------------
+			' Ask the user if they want to overwrite the
+			' existing columns clause
+			'-------------------------------------------------
+			Dim lResponse As Logical
+			lResponse = Ask("Overwrite existing columns clause with list of columns?", "Yes", "No")
+		
+			If lResponse = False Then
+				Exit Sub
+			End If
+		End If
+
+		'-------------------------------------------------
+		' Update the columns clause in the form
+		'-------------------------------------------------
+		Alter Control 1 Value sSQLColumns
+		Exit Sub
+
+	End If
 
 	'-------------------------------------------------
 	' If the user has ticked the plot data spatially
@@ -1286,6 +1328,13 @@ Sub SetFileFormat
 	iFileFormat = ReadControlValue(6)
 
 	'-------------------------------------------------
+	' Check if the user has ticked the plot data
+	' spatially checkbox.
+	'-------------------------------------------------
+	Dim iPlotData As Integer
+	iPlotData = ReadControlValue(12)
+
+	'-------------------------------------------------
 	' If a .tab file is selected then show the
 	' set default symbology checkbox
 	'-------------------------------------------------
@@ -1302,18 +1351,28 @@ Sub SetFileFormat
 	' show the plot data spatially
 	'-------------------------------------------------
 	If iFileFormat = 1 Or iFileFormat = 2 then
+		'-------------------------------------------------
+		' If spatial plotting is allowed in the
+		' configuration file.
+		'-------------------------------------------------
 		If bEnablePlotting = True then
-			Alter Control 12 Show
-			Alter Control 20 Show
-			Alter Control 21 Show
-			Alter Control 22 Show
-			Alter Control 23 Show
-			Alter Control 24 Show
-			Alter Control 25 Show
-			Alter Control 26 Show
-			Alter Control 27 Show
-			Alter Control 28 Show
-			Alter Control 40 Show
+			'-------------------------------------------------
+			' If the user has ticked the plot data spatially
+			' checkbox then clear the column names.
+			'-------------------------------------------------
+			If iPlotData = 1 then
+				Alter Control 12 Show
+				Alter Control 20 Show
+				Alter Control 21 Show
+				Alter Control 22 Show
+				Alter Control 23 Show
+				Alter Control 24 Show
+				Alter Control 25 Show
+				Alter Control 26 Show
+				Alter Control 27 Show
+				Alter Control 28 Show
+				Alter Control 40 Show
+			End If
 		End If
 	Else
 		Alter Control 12 Hide
