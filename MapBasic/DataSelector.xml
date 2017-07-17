@@ -75,7 +75,7 @@ as a spreadsheet.
 	<value>2</value>
   </DefaultSymbologySet>
 
-  <!-- The default for whether the SQL database tables will be spatially plotted -->
+  <!-- The default for whether the SQL database tables will be spatially plotted. Leave blank to hide option in dialog. -->
   <DefaultSpatialPlotting>
 	<value>No</value>
   </DefaultSpatialPlotting>
