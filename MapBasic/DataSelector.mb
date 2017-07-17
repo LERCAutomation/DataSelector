@@ -19,7 +19,7 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector v1.0.15
+'* DataSelector v1.0.16
 '*
 '* Creates a dialog window which lists the SQL tables
 '* in the remote SQL Server and allows the user to enter a
@@ -29,7 +29,11 @@
 '* of the selected records.
 '*
 '* Created:			Andy Foy - June 2015
-'* Last revised:	Andy Foy - November 2016
+'* Last revised:	Andy Foy - January 2017
+'*
+'* *****************  Version 1.0.16  ***************
+'* Author: Andy Foy		Date: 25/01/2017
+'* A. Enable symbology clauses to be blank.
 '*
 '* *****************  Version 1.0.15  ***************
 '* Author: Andy Foy		Date: 26/11/2016
@@ -131,7 +135,7 @@ Sub Main
 	'-------------------------------------------------
 	' Set the version number
 	'-------------------------------------------------
-	sVersion = "1.0.15"
+	sVersion = "1.0.16"
 
 	'-------------------------------------------------
 	' Get the title for the Tool menu
@@ -1222,14 +1226,17 @@ Sub SetSpatialColumns
 
 		'-------------------------------------------------
 		' Concatenate all the columns into an array
-		' and a string
+		' and a string (except the 'MI_STYLE' and
+		' 'MI_PRINX' columns
 		'-------------------------------------------------
 		Redim aSQLColumns(i)
 		aSQLColumns(i) = sSQLColumn
-		If sSQLColumns = "" Then
-			sSQLColumns = sSQLColumn
-		Else
-			sSQLColumns = sSQLColumns + ", " + sSQLColumn
+		If sSQLColumn <> "MI_STYLE" And sSQLColumn <> "MI_PRINX" Then
+			If sSQLColumns = "" Then
+				sSQLColumns = sSQLColumn
+			Else
+				sSQLColumns = sSQLColumns + ", " + sSQLColumn
+			End If
 		End If
 		Server nStmt Fetch Next
 		i = i + 1
@@ -2387,6 +2394,9 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 						'-------------------------------------------------
 						Dim sClause As String
 						sClause = GetSingleNodeValue(hXMLSymbolNode, "Clause")
+						If sClause <> "" Then
+							sClause = " And " + sClause
+						End If
 
 						'-------------------------------------------------
 						' Get the type of object (i.e. Point or Region)
@@ -2399,7 +2409,7 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 						' matching the required SQL clause
 						'-------------------------------------------------
 						Dim sCmd As String
-						sCmd = "Select * From " + sLocalName + " Where Str$(obj) = """ + sObject + """ And " + sClause + " Into NewStyle NoSelect"
+						sCmd = "Select * From " + sLocalName + " Where Str$(obj) = """ + sObject + """ " + sClause + " Into NewStyle NoSelect"
 						Run Command (sCmd)
 
 						'-------------------------------------------------
