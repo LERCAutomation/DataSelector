@@ -19,7 +19,7 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector v1.0.16
+'* DataSelector v1.0.17
 '*
 '* Creates a dialog window which lists the SQL tables
 '* in the remote SQL Server and allows the user to enter a
@@ -29,7 +29,11 @@
 '* of the selected records.
 '*
 '* Created:			Andy Foy - June 2015
-'* Last revised:	Andy Foy - January 2017
+'* Last revised:	Andy Foy - November 2017
+'*
+'* *****************  Version 1.0.17  ***************
+'* Author: Andy Foy		Date: 09/11/2017
+'* A. Replace single quotes in all SQL clauses.
 '*
 '* *****************  Version 1.0.16  ***************
 '* Author: Andy Foy		Date: 25/01/2017
@@ -135,7 +139,7 @@ Sub Main
 	'-------------------------------------------------
 	' Set the version number
 	'-------------------------------------------------
-	sVersion = "1.0.16"
+	sVersion = "1.0.17"
 
 	'-------------------------------------------------
 	' Get the title for the Tool menu
@@ -1601,11 +1605,19 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	Call MyPrint("Selecting from table = '" + sTableName + "' ...")
 
 	'-------------------------------------------------
+	' Replace single quotes with two single quotes
+	' in all SQL clauses
+	'-------------------------------------------------
+	sColumnNames = StringReplace(sColumnNames, "'", "''")
+	sWhereClause = StringReplace(sWhereClause, "'", "''")
+	sGroupClause = StringReplace(sGroupClause, "'", "''")
+	sOrderClause = StringReplace(sOrderClause, "'", "''")
+
+	'-------------------------------------------------
 	' Execute a SQL Server stored procedure to select
 	' the species records based on the where clause,
 	' group by and order by
 	'-------------------------------------------------
-	sWhereClause = StringReplace(sWhereClause, "'", "''")
 	Dim nStmt1 As Integer
 	nStmt1 = Server_Execute(nConn, "EXECUTE dbo.AFSelectSppSubset '"
 	 + sDefaultSchema	 + "', '" + sTableName + "', '" + sColumnNames + "', '"
