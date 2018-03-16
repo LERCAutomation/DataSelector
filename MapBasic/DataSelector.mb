@@ -1,7 +1,7 @@
 '* DataSelector is a MapBasic tool and associated SQL scripts to extract
 '* biodiversity information from SQL Server based on any selection criteria.
 '*
-'* Copyright © 2015 - 2016 TVERC, GiGL
+'* Copyright © 2015 - 2018 TVERC, GiGL
 '* 
 '* This file is part of the MapInfo tool 'DataSelector'.
 '* 
@@ -19,7 +19,7 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector v1.0.17
+'* DataSelector v1.0.18
 '*
 '* Creates a dialog window which lists the SQL tables
 '* in the remote SQL Server and allows the user to enter a
@@ -29,7 +29,12 @@
 '* of the selected records.
 '*
 '* Created:			Andy Foy - June 2015
-'* Last revised:	Andy Foy - November 2017
+'* Last revised:	Andy Foy - March 2018
+'*
+'* *****************  Version 1.0.18  ***************
+'* Author: Andy Foy		Date: 16/03/2018
+'* A. Check top window is map window before trying to add
+'*    output layer.
 '*
 '* *****************  Version 1.0.17  ***************
 '* Author: Andy Foy		Date: 09/11/2017
@@ -139,7 +144,7 @@ Sub Main
 	'-------------------------------------------------
 	' Set the version number
 	'-------------------------------------------------
-	sVersion = "1.0.17"
+	sVersion = "1.0.18"
 
 	'-------------------------------------------------
 	' Get the title for the Tool menu
@@ -2126,7 +2131,13 @@ Sub SelectSpecies (ByVal nConn As Integer,
 			' window using the table.
 			'-------------------------------------------------
 			If NumWindows() > 0 Then
-				Add Map Layer sTableAlias
+				Dim iWin as Integer
+				iWin = FrontWindow()
+				If WindowInfo(iWin, WIN_INFO_TYPE) = WIN_MAPPER Then
+					Add Map Layer sTableAlias
+				Else
+					Map From sTableAlias
+				End If
 			Else
 				Map From sTableAlias
 			End If
