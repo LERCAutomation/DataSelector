@@ -1,7 +1,7 @@
 '* DataSelector is a MapBasic tool and associated SQL scripts to extract
 '* biodiversity information from SQL Server based on any selection criteria.
 '*
-'* Copyright © 2015 - 2018 TVERC, GiGL
+'* Copyright © 2015 - 2018 TVERC, GiGL, SBIC
 '* 
 '* This file is part of the MapInfo tool 'DataSelector'.
 '* 
@@ -19,7 +19,7 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector v1.0.18
+'* DataSelector v1.0.19
 '*
 '* Creates a dialog window which lists the SQL tables
 '* in the remote SQL Server and allows the user to enter a
@@ -29,7 +29,11 @@
 '* of the selected records.
 '*
 '* Created:			Andy Foy - June 2015
-'* Last revised:	Andy Foy - March 2018
+'* Last revised:	Andy Foy - October 2018
+'*
+'* *****************  Version 1.0.19  ***************
+'* Author: Andy Foy		Date: 22/10/2018
+'* A. Include new tool buttons for MI Pro 64bit.
 '*
 '* *****************  Version 1.0.18  ***************
 '* Author: Andy Foy		Date: 16/03/2018
@@ -141,32 +145,25 @@ Sub Main
 '* Main sub-routine
 '***************************************************************
 
+	OnError Goto HandleError
+
 	'-------------------------------------------------
 	' Set the version number
 	'-------------------------------------------------
-	sVersion = "1.0.18"
+	sVersion = "1.0.19"
 
 	'-------------------------------------------------
 	' Get the title for the Tool menu
 	'-------------------------------------------------
 	Call GetToolTitle
 
-	'-------------------------------------------------
-	' Create a new menu
-	'-------------------------------------------------
-	Create Menu "&" & sToolTitle As
-	   "&Run " & sToolTitle & " ..." Calling OpenDialog,
-	   "(-",
-	   "&About " & sToolTitle & " ..." Calling AboutBox,
-	   "E&xit " & sToolTitle Calling egsit
-
-	'-------------------------------------------------
-	' Add the new menu item to the Tools menu
-	'-------------------------------------------------
-	Alter Menu "Tools" Add
-		sToolTitle As sToolTitle
-
+	Call CreateToolMenu(sToolTitle)
+	
 	Exit Sub
+
+HandleError:
+	Note "Main: " + Error$()
+	Resume Next
 
 End Sub
 
@@ -436,7 +433,7 @@ GetVariablesError:
 
 End Sub
 
-Sub OpenDialog
+Sub DataSelector
 '***************************************************************
 '* Create the user dialog window
 '***************************************************************
@@ -2506,7 +2503,6 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 		Else
 
 			Note "Error : " + MIGetErrorMessage()
-			Note "x = " + x
 
 		End If
 
@@ -2601,7 +2597,7 @@ Sub AboutBox
 		Title "Created by Andy Foy Consulting."
 		Position 10,60
 	Control StaticText
-		Title "Copyright© 2015 - 2016 TVERC, GiGL."
+		Title "Copyright© 2015 - 2018 TVERC, GiGL, SBIC."
 		Position 10,70
 	Control OKButton
 		Position 185,95

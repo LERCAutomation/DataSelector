@@ -1,7 +1,7 @@
 '* DataSelector is a MapBasic tool and associated SQL scripts to extract
 '* biodiversity information from SQL Server based on any selection criteria.
 '*
-'* Copyright © 2015 TVERC, GiGL
+'* Copyright © 2015 - 2018 TVERC, GiGL, SBIC
 '* 
 '* This file is part of the MapInfo tool 'DataSelector'.
 '* 
@@ -19,18 +19,24 @@
 '* along with DataExtractor.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector.def v1.03
+'* DataSelector.def v1.04
 '*
 '* Defines global variables and declares subroutines and functions.
 '*
 '*
 '* Created:			Andy Foy - June 2015
-'* Last revised:	Andy Foy - Sept 2015
+'* Last revised:	Andy Foy - October 2018
 '***************************************************************
 
 Include "MapBasic.def"
 Include "Menu.def"
 Include "Icons.def"
+
+'Include "XMLMenu32.def"
+
+Include "IMapInfoPro.def"
+Include "Enums.def"
+Include "XMLMenu64.def"
 
 '-------------------------------------------------
 ' Define the custom variable types
@@ -69,23 +75,16 @@ End Type
 Define NORMAL_PRIORITY_CLASS &H20
 Define INFINITE -1
 Define STRING_LEN 1024
-Define MIXmlDocument Integer
-Define MIXmlNode Integer
-Define MIXmlNodeList Integer
-Define MIXmlNamedNodeMap Integer
-Define MIXMLSchemaCollection Integer
-Define MIXML_LIB_NAME "GmlXlat.dll"
-Define MIWEBSERVICES_LIB_NAME "GmlXlat.dll"
-'Define MIXML_LIB_NAME "MapInfo.XmlUtil.dll"
-'Define MIWEBSERVICES_LIB_NAME "MapInfo.XmlUtil.dll"
 
 '-------------------------------------------------
 ' Declare the subroutines
 '-------------------------------------------------
 Declare Sub Main
 Declare Sub GetToolTitle
+Declare Sub CreateToolMenu
+	(ByVal sToolTitle As String)
 Declare Sub GetDefaultValues
-Declare Sub OpenDialog
+Declare Sub DataSelector
 Declare Sub DialogSetup
 Declare Sub SaveQuery
 Declare Sub LoadQuery
@@ -243,6 +242,7 @@ Declare Function MIXmlGetChildList Lib MIXML_LIB_NAME Alias "MIXmlGetChildList" 
 Declare Function MIXmlGetNextNode Lib MIXML_LIB_NAME Alias "MIXmlGetNextNode" (
 	ByVal hXMLNodeList As MIXmlNodeList)
 	As MIXmlNode
+
 Declare Function MIXmlGetAttributeList Lib MIXML_LIB_NAME Alias "MIXmlGetAttributeList" (
 	ByVal hXMLNode As MIXmlNode)
 	As MIXmlNamedNodeMap

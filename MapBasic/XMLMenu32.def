@@ -1,0 +1,57 @@
+'* DataSelector is a MapBasic tool and associated SQL scripts to extract
+'* biodiversity information from SQL Server based on any selection criteria.
+'*
+'* Copyright © 2015 - 2018 TVERC, GiGL, SBIC
+'* 
+'* This file is part of the MapInfo tool 'DataSelector'.
+'* 
+'* DataSelector is free software: you can redistribute it and/or modify
+'* it under the terms of the GNU General Public License as published by
+'* the Free Software Foundation, either version 3 of the License, or
+'* (at your option) any later version.
+'* 
+'* DataSelector is distributed in the hope that it will be useful,
+'* but WITHOUT ANY WARRANTY; without even the implied warranty of
+'* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+'* GNU General Public License for more details.
+'* 
+'* You should have received a copy of the GNU General Public License
+'* along with DataExtractor.  If not, see <http://www.gnu.org/licenses/>.
+'*
+'***************************************************************
+'* XMLMenu.def v1.01
+'*
+'* Defines XML and menu global variables and declares subroutines
+'* and functions.
+'*
+'*
+'* Created:			Andy Foy - October 2018
+'* Last revised:	Andy Foy - October 2018
+'***************************************************************
+
+'-------------------------------------------------
+' Define the variables
+'-------------------------------------------------
+Define MIXmlDocument Integer
+Define MIXmlNode Integer
+Define MIXmlNodeList Integer
+Define MIXmlNamedNodeMap Integer
+Define MIXMLSchemaCollection Integer
+Define MIXML_LIB_NAME "GmlXlat.dll"
+Define MIWEBSERVICES_LIB_NAME "GmlXlat.dll"
+'Define MIXML_LIB_NAME "MapInfo.XmlUtil.dll"
+'Define MIWEBSERVICES_LIB_NAME "MapInfo.XmlUtil.dll"
+
+'-------------------------------------------------
+' Declare the subroutines
+'-------------------------------------------------
+Declare Sub AddIn_About
+Declare Sub EndHandler
+
+'-------------------------------------------------
+' Declare the functions
+'-------------------------------------------------
+Declare Function AddIn_Name() As String
+Declare Function AddIn_Description() As String
+Declare Function AddIn_Version() As String
+Declare Function AddIn_ImageUri() As String

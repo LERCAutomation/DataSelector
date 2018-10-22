@@ -1,0 +1,57 @@
+'* DataSelector is a MapBasic tool and associated SQL scripts to extract
+'* biodiversity information from SQL Server based on any selection criteria.
+'*
+'* Copyright © 2015 - 2018 TVERC, GiGL, SBIC
+'* 
+'* This file is part of the MapInfo tool 'DataSelector'.
+'* 
+'* DataSelector is free software: you can redistribute it and/or modify
+'* it under the terms of the GNU General Public License as published by
+'* the Free Software Foundation, either version 3 of the License, or
+'* (at your option) any later version.
+'* 
+'* DataSelector is distributed in the hope that it will be useful,
+'* but WITHOUT ANY WARRANTY; without even the implied warranty of
+'* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+'* GNU General Public License for more details.
+'* 
+'* You should have received a copy of the GNU General Public License
+'* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
+'*
+'***************************************************************
+'* MIMenu32bit v1.00
+'*
+'* Contains routines to set the tool button for MI 32bit.
+'*
+'*
+'* Created:			Andy Foy - October 2018
+'* Last revised:	Andy Foy - October 2018
+'*
+'* *****************  Version 1.00  *****************
+'* Author: Andy Foy		Date: 22/10/2018
+'* A. Initial version of code.
+'* 
+'***************************************************************
+Include "DataSelector.def"
+
+Sub CreateToolMenu(ByVal sToolTitle As String)
+'*************************************************
+'* Set the tool menu & button
+'*************************************************
+
+	'-------------------------------------------------
+	' Create the old menu style
+	'-------------------------------------------------
+	Create Menu "&" & sToolTitle As
+	   "&Run " & sToolTitle & " ..." Calling DataSelector,
+	   "(-",
+	   "&About " & sToolTitle & " ..." Calling AboutBox,
+	   "E&xit " & sToolTitle Calling egsit
+
+	'-------------------------------------------------
+	' Add the new menu item to the Tools menu
+	'-------------------------------------------------
+	Alter Menu "Tools" Add
+		sToolTitle As sToolTitle
+
+End Sub
