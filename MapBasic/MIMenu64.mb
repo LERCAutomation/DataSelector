@@ -108,8 +108,8 @@ Sub CreateToolMenu(ByVal sToolTitle As String)
 		'-------------------------------------------------
 		' Set the button icon
 		'-------------------------------------------------
-		Call SetRbnBtnCtrlSmallIcon(mtsBtn, New_Uri("D:\GitHub\DataSelector-MapInfo Test\MapBasic\btnDataSelector.png", 0))
-		Call SetRbnBtnCtrlLargeIcon(mtsBtn, New_Uri("D:\GitHub\DataSelector-MapInfo Test\MapBasic\DataSelector.png", 0))
+		Call SetRbnBtnCtrlSmallIcon(mtsBtn, New_Uri("D:\GitHub\DataSelector-MapInfo\MapBasic\btnDataSelector.png", 0))
+		Call SetRbnBtnCtrlLargeIcon(mtsBtn, New_Uri("D:\GitHub\DataSelector-MapInfo\MapBasic\DataSelector.png", 0))
 		Call SetRbnBtnCtrlIsLarge(mtsBtn, TRUE)
 
 		Alter Menu ID 4 Add
@@ -186,6 +186,6 @@ End Function
 
 Function AddIn_ImageUri() As String
 
-	AddIn_ImageUri = "D:\GitHub\DataSelector-MapInfo Test\MapBasic\btnDataSelector.png"
+	AddIn_ImageUri = "D:\GitHub\DataSelector-MapInfo\MapBasic\btnDataSelector.png"
 
 End Function
