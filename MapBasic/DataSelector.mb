@@ -34,6 +34,7 @@
 '* *****************  Version 1.0.19  ***************
 '* Author: Andy Foy		Date: 22/10/2018
 '* A. Include new tool buttons for MI Pro 64bit.
+'* B. Check output files start with alphabetic characters.
 '*
 '* *****************  Version 1.0.18  ***************
 '* Author: Andy Foy		Date: 16/03/2018
@@ -1488,11 +1489,18 @@ Sub ProcessSelection
 			Call MyPrint("Output Format = '.tab'")
 	End Case
 
+	Dim sDefaultFile as string
+	sDefaultFile = ""
+
 	'-------------------------------------------------
 	' Prompt the user for the output file destination
 	'-------------------------------------------------
-	sOutputFile = FileSaveAsDlg(sDefaultExtractPath, "", sOutputFormat, "Select where to save the output file")
+GetFileName:
+	sOutputFile = FileSaveAsDlg(sDefaultExtractPath, sDefaultFile, sOutputFormat, "Select where to save the output file")
 
+	'-------------------------------------------------
+	' Check the user has selected an output file
+	'-------------------------------------------------
 	if sOutputFile = "" then
 		Call MyPrint("No output file selected - selection cancelled")
 		Note "No output file selected - selection cancelled"
@@ -1507,14 +1515,33 @@ Sub ProcessSelection
 	sOutputName = PathToFileName$(sOutputFile)
 
 	'-------------------------------------------------
+	' Check the output file starts with a character
+	'-------------------------------------------------
+	Dim iChar As Integer
+	Dim bChar As Logical
+
+	iChar = Asc(Left$(sOutputName, 1))
+	If (iChar > 64 And iChar < 91) Or (iChar > 96 And iChar < 123) Then
+		bChar = True
+	Else
+		bChar = False
+	End If
+
+	If bChar = False Then
+		Note "The first character in the output file name must be alphabetic."
+		sDefaultFile = sOutputName
+		Goto GetFileName
+	End If
+
+	'-------------------------------------------------
 	' Check the selected directory already exists
 	'-------------------------------------------------
 	Dim iSuccess, iSecurity As Integer
 	iSecurity = 0
 	iSuccess = SetCurrentDirectory(sOutputPath)
 	if iSuccess = 0 Then
-		Call MyPrint("Output folder does not exist - selection cancelled")
-		Note "Output folder does not exist - selection cancelled"
+		Call MyPrint("Output folder does not exist - selection cancelled.")
+		Note "Output folder does not exist - selection cancelled."
 		Exit Sub
 	End If
 
@@ -1523,8 +1550,8 @@ Sub ProcessSelection
 	' extension
 	'-------------------------------------------------
 	if UCase$(Right$(sOutputName, 3)) <> UCase$(sOutputFormat) Then
-		Call MyPrint("Output file has incorrect extension - selection cancelled")
-		Note "Output file has incorrect extension - selection cancelled"
+		Call MyPrint("Output file has incorrect extension - selection cancelled.")
+		Note "Output file has incorrect extension - selection cancelled."
 		Exit Sub
 	End If
 
