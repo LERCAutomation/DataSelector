@@ -19,7 +19,7 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector v1.0.19
+'* DataSelector v1.0.20
 '*
 '* Creates a dialog window which lists the SQL tables
 '* in the remote SQL Server and allows the user to enter a
@@ -29,7 +29,11 @@
 '* of the selected records.
 '*
 '* Created:			Andy Foy - June 2015
-'* Last revised:	Andy Foy - October 2018
+'* Last revised:	Andy Foy - December 2018
+'*
+'* *******************  Version 1.0.20  ***************
+'* Author: Andy Foy		Date: 13/12/2018
+'* A. Use schema when calling stored procedures.
 '*
 '* *****************  Version 1.0.19  ***************
 '* Author: Andy Foy		Date: 22/10/2018
@@ -151,7 +155,7 @@ Sub Main
 	'-------------------------------------------------
 	' Set the version number
 	'-------------------------------------------------
-	sVersion = "1.0.19"
+	sVersion = "1.0.20"
 
 	'-------------------------------------------------
 	' Get the title for the Tool menu
@@ -1212,7 +1216,7 @@ Sub SetSpatialColumns
 	'-------------------------------------------------
 	Dim nStmt as Integer
 	Dim sColumnListSQL As String
-	sColumnListSQL = "Select column_name From information_schema.columns Where table_name = '" + sTableName + "' Order By ORDINAL_POSITION"
+	sColumnListSQL = "Select column_name From information_schema.columns Where table_name = '" + sTableName + "' And table_schema = '" + sDefaultSchema + "' Order By ORDINAL_POSITION"
 	nStmt = Server_Execute(nConn, sColumnListSQL)
 
 	'-------------------------------------------------
@@ -1648,8 +1652,8 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	' group by and order by
 	'-------------------------------------------------
 	Dim nStmt1 As Integer
-	nStmt1 = Server_Execute(nConn, "EXECUTE dbo.AFSelectSppSubset '"
-	 + sDefaultSchema	 + "', '" + sTableName + "', '" + sColumnNames + "', '"
+	nStmt1 = Server_Execute(nConn, "EXECUTE " + sDefaultSchema + ".AFSelectSppSubset '"
+	 + sDefaultSchema + "', '" + sTableName + "', '" + sColumnNames + "', '"
 	 + sWhereClause + "', '" + sGroupClause + "', '" + sOrderClause + "', '"
 	 + sUserID + "', 0")
 
@@ -1862,7 +1866,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	' the species records temporary table
 	'-------------------------------------------------
 	Dim nStmt3 As Integer
-	nStmt3 = Server_Execute(nConn, "EXECUTE dbo.AFClearSppSubset '" + sDefaultSchema
+	nStmt3 = Server_Execute(nConn, "EXECUTE " + sDefaultSchema + ".AFClearSppSubset '" + sDefaultSchema
 	 + "', '" + sTableName + "', '" + sUserID + "'")
 
 	'-------------------------------------------------
@@ -1989,6 +1993,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 
 			Call PlotSpatialData(sTableAlias, iMaxPointSize,
 				sXCol, sYCol, sSizeCol)
+
 
 			Set ProgressBars On
 
@@ -2476,6 +2481,7 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 							' Set the styles (depending on type of object)
 							'-------------------------------------------------
 							Dim sSymbol, sPen, sBrush As String
+
 							Dim stlSymbol As Symbol
 							Dim stlPen As Pen
 							Dim stlBrush As Brush
