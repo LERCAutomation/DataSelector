@@ -19,7 +19,7 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector v1.0.20
+'* DataSelector v1.0.21
 '*
 '* Creates a dialog window which lists the SQL tables
 '* in the remote SQL Server and allows the user to enter a
@@ -28,8 +28,13 @@
 '* MapInfo .tab file, ArcGIS .shp file, .txt or .csv file
 '* of the selected records.
 '*
-'* Created:			Andy Foy - June 2015
-'* Last revised:	Andy Foy - December 2018
+'* Created:         Andy Foy - June 2015
+'* Last revised:    Andy Foy - December 2018
+'*
+'* *******************  Version 1.0.21  ***************
+'* Author: Andy Foy		Date: 17/12/2018
+'* A. Truncate user ID if it means the temporary SQL
+'*    will be too long for the MapCatalog (> 32 chars).
 '*
 '* *******************  Version 1.0.20  ***************
 '* Author: Andy Foy		Date: 13/12/2018
@@ -155,7 +160,7 @@ Sub Main
 	'-------------------------------------------------
 	' Set the version number
 	'-------------------------------------------------
-	sVersion = "1.0.20"
+	sVersion = "1.0.21"
 
 	'-------------------------------------------------
 	' Get the title for the Tool menu
@@ -711,6 +716,13 @@ Sub DataSelector
 		Calling CheckSelection
 
 Done:
+	'-------------------------------------------------
+	' Disconnect the connection to the SQL Server database
+	'-------------------------------------------------
+	If nConn <> 0 Then
+		Server nConn Disconnect
+	End If
+
 	Exit Sub
 	
 ErrorTrap:
@@ -1588,12 +1600,6 @@ GetFileName:
 		' Close the dialog
 		'-------------------------------------------------
 		Dialog Remove
-
-		'-------------------------------------------------
-		' Disconnect the connection to the SQL Server database
-		'-------------------------------------------------
-		Server nConn Disconnect
-
 	End If
 
 	'-------------------------------------------------
@@ -1631,10 +1637,24 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	sShortName = StringReplace(sShortName, "-", "")
 
 	'-------------------------------------------------
+	' Get the current user ID
+	'-------------------------------------------------
+	Dim sUser As String
+	sUser = sUserID
+
+	'-------------------------------------------------
+	' Truncate the user ID if it will make the
+	' temporary SQL table name too long
+	'-------------------------------------------------
+	If Len(sTableName + "_" + sUser) > 32 Then
+		sUser = Left$(sUser, Maximum(31 - Len(sTableName), 0))
+	End If
+
+	'-------------------------------------------------
 	' Setup the temporary and local table names
 	'-------------------------------------------------
 	Dim sTempName As String
-	sTempName = sTableName + "_" + sUserID
+	sTempName = sTableName + "_" + sUser
 	Call MyPrint("Selecting from table = '" + sTableName + "' ...")
 
 	'-------------------------------------------------
@@ -1655,7 +1675,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	nStmt1 = Server_Execute(nConn, "EXECUTE " + sDefaultSchema + ".AFSelectSppSubset '"
 	 + sDefaultSchema + "', '" + sTableName + "', '" + sColumnNames + "', '"
 	 + sWhereClause + "', '" + sGroupClause + "', '" + sOrderClause + "', '"
-	 + sUserID + "', 0")
+	 + sUser + "', 0")
 
 	'-------------------------------------------------
 	' Close the results
@@ -1867,7 +1887,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	'-------------------------------------------------
 	Dim nStmt3 As Integer
 	nStmt3 = Server_Execute(nConn, "EXECUTE " + sDefaultSchema + ".AFClearSppSubset '" + sDefaultSchema
-	 + "', '" + sTableName + "', '" + sUserID + "'")
+	 + "', '" + sTableName + "', '" + sUser + "'")
 
 	'-------------------------------------------------
 	' Close the results
