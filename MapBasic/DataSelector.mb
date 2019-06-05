@@ -19,7 +19,7 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector v1.0.21
+'* DataSelector v1.0.22
 '*
 '* Creates a dialog window which lists the SQL tables
 '* in the remote SQL Server and allows the user to enter a
@@ -29,7 +29,12 @@
 '* of the selected records.
 '*
 '* Created:         Andy Foy - June 2015
-'* Last revised:    Andy Foy - December 2018
+'* Last revised:    Andy Foy - June 2019
+'*
+'* *******************  Version 1.0.22  ***************
+'* Author: Andy Foy		Date: 05/06/2019
+'* A. Allow user to select XML profile to use.
+'* B. Add "DefaultClearLogFile" option to XML.
 '*
 '* *******************  Version 1.0.21  ***************
 '* Author: Andy Foy		Date: 17/12/2018
@@ -160,7 +165,7 @@ Sub Main
 	'-------------------------------------------------
 	' Set the version number
 	'-------------------------------------------------
-	sVersion = "1.0.21"
+	sVersion = "1.0.22"
 
 	'-------------------------------------------------
 	' Get the title for the Tool menu
@@ -222,6 +227,7 @@ Sub GetToolTitle
 					' Load the default values from the child nodes
 					' under the DataSelector node
 					'-------------------------------------------------
+					
 					' Title for adding the program to the Tool menu
 					Dim sTitle As String
 					sTitle = GetSingleNodeValue(hXMLNode, "ToolTitle")
@@ -229,6 +235,12 @@ Sub GetToolTitle
 						sToolTitle = sTitle
 					End If
 
+					' Default XML file
+					sDefaultXMLFile = GetSingleNodeValue(hXMLNode, "DefaultProfile")
+					If sDefaultXMLFile = "" Then
+						sDefaultXMLFile = "DefaultProfile"
+					End If
+					
 				End If
 
 			End If
@@ -257,7 +269,7 @@ GetTitleError:
 
 End Sub
 
-Sub GetDefaultValues
+Sub GetDefaultValues(ByVal sXMLFile As String)
 '***************************************************************
 '* Retrieve all the default values from the config file
 '* which is a XML document
@@ -284,7 +296,7 @@ Sub GetDefaultValues
 		' Load the document into the document handle
 		'-------------------------------------------------
 		Dim iXMLLoad As SmallInt
-		iXMLLoad = MIXmlDocumentLoad(hXMLDoc, ApplicationDirectory$() + "DataSelector.xml", bParseError, FALSE, FALSE)
+		iXMLLoad = MIXmlDocumentLoad(hXMLDoc, ApplicationDirectory$() + sXMLFile, bParseError, FALSE, FALSE)
 		if iXMLLoad > 0 Then
 
 			'-------------------------------------------------
@@ -351,6 +363,9 @@ Sub GetDefaultValues
 
 					' User interface dialog size
 					sDialogSize = GetSingleNodeValue(hXMLNode, "DialogSize")
+
+					' Default option to clear log file
+					sDefaultClearLogFile= GetSingleNodeValue(hXMLNode, "DefaultClearLogFile")
 
 					'-------------------------------------------------
 					' Get a handle on the DefaultSpatialColumns node
@@ -461,9 +476,18 @@ Sub DataSelector
 	sUserID = StringReplace(sUserID, ".", "_")
 
 	'-------------------------------------------------
+	' Prompt the user for their required config file
+	'-------------------------------------------------
+	sXMLFile = ""
+	Call GetXmlProfile
+	If sXMLFile = "" Then
+		Exit Sub
+	End If
+	
+	'-------------------------------------------------
 	' Retrieve the default values from the config file
 	'-------------------------------------------------
-	Call GetDefaultValues
+	Call GetDefaultValues(sXMLFile)
 
 	'-------------------------------------------------
 	' Maximise the dialog size if required
@@ -683,7 +707,7 @@ Sub DataSelector
 		ID 8
 		Title "Clear log file?"
 		Position 10,290 + iDialogMax
-		Value TRUE
+		Value bDefaultClearLogFile
 		'Into bClearLog
 
 	'-------------------------------------------------
@@ -728,6 +752,110 @@ Done:
 ErrorTrap:
 	Note str$(Err()) + ": " + Error$()
 	Call MyPrint("Error: " + str$(Err()) + " - " + Error$())
+	Resume Done
+
+End Sub
+
+Sub GetXMLProfile()
+'***************************************************************
+'* Create the user dialog window
+'***************************************************************
+
+	'-------------------------------------------------
+	' Trap errors
+	'-------------------------------------------------
+    OnError Goto ErrorTrap
+
+	Dim sFileExclude As String
+	sFileExclude = "DataBuffer.xml"
+	
+	Dim sDir As String
+	sDir = ApplicationDirectory$()
+	
+	Dim bResult As Logical
+	Dim sFileNames() as String
+	bResult = GetFileList(sDir, "*.xml" , sFileNames(), sFileExclude)
+	
+	Dim i as integer
+	Dim sXMLFiles As String
+	sXMLFiles = ""
+	If bResult = True And UBound(sFileNames()) > 0 Then
+	
+		For i = 1 to UBound(sFileNames())
+		
+			sXMLFiles = sXMLFiles + sFileNames(i) + ";"
+	
+		Next
+		
+		sXMLFiles = Left$(sXMLFiles, Len(sXMLFiles) - 1)
+
+	Else
+
+		Note "There are no profile XML files in '" + ApplicationDirectory$() + "'"
+		Goto Done
+
+	End If	
+	
+	If UBound(sFileNames()) = 1 Then
+		sXMLFile = sFileNames(1) + ".xml"
+		Goto Done
+	End If
+	
+	'-------------------------------------------------
+	' Build a new dialog window
+	'-------------------------------------------------
+	Dialog
+		Title "Data Buffer " + sVersion
+		Width 190
+		Height 80
+		Position 50, 70
+
+	'-------------------------------------------------
+	' Add a profile table listbox
+	'-------------------------------------------------
+	Control StaticText Title "Please Choose a Profile:"
+		Position 10, 10
+	Control PopupMenu
+		ID 1
+		Title From Variable sXMLFiles
+		Value iDefaultXMLFile
+		Position 10, 20
+		Height 10
+		Width 170
+		Into iXMLFile
+
+	'-------------------------------------------------
+	' Add Ok and cancel buttons
+	'-------------------------------------------------
+	Control CancelButton
+		Position 95,60
+		Width 40
+	Control OkButton
+		Title "Ok"
+		Position 140,60
+		Width 40
+		'Calling CheckSelection
+
+	'-------------------------------------------------
+	' Store the dialog variables
+	'-------------------------------------------------
+	If CommandInfo(CMD_INFO_DLG_OK) Then
+		sXMLFile = sFileNames(iXMLFile) + ".xml"
+	Else
+		sXMLFile = ""
+	End If
+
+	'-------------------------------------------------
+	' Close the dialog
+	'-------------------------------------------------
+	'Dialog Remove
+
+Done:
+	Exit Sub
+	
+ErrorTrap:
+	Note str$(Err()) + ": " + Error$()
+	Call MyPrint(str$(Err()) + ": " + Error$())
 	Resume Done
 
 End Sub
@@ -857,6 +985,15 @@ SetDefaults:
 		Case Else
 			Alter Control 6 Value 1
 	End Case
+
+	'-------------------------------------------------
+	' Set the default value for clearing the log file
+	'-------------------------------------------------
+	If UCase$(sDefaultClearLogFile) = "YES" OR UCase$(sDefaultClearLogFile) = "Y" Then
+		Alter Control 8 Value TRUE
+	Else
+		Alter Control 8 Value FALSE
+	End If
 
 	'-------------------------------------------------
 	' Set the default Symbology Set value
@@ -1113,13 +1250,13 @@ Sub CheckSelection
 	sOrderClause = ReadControlValue(4)
 	iSQLTable = ReadControlValue(5)
 	iOutputFormat = ReadControlValue(6)
-	iSymbologySet = ReadControlValue(31)
 	bClearLog = ReadControlValue(8)
 	bPlotSpatialData = ReadControlValue(12)
 	iXColumn = ReadControlValue(22)
 	iYColumn = ReadControlValue(24)
 	iSizeColumn = ReadControlValue(26)
 	sMaxPointsPrecision = ReadControlValue(28)
+	iSymbologySet = ReadControlValue(31)
 	bDeletePlotColumns = ReadControlValue(40)
 
 	'-------------------------------------------------
@@ -1518,8 +1655,8 @@ GetFileName:
 	' Check the user has selected an output file
 	'-------------------------------------------------
 	if sOutputFile = "" then
-		Call MyPrint("No output file selected - selection cancelled")
-		Note "No output file selected - selection cancelled"
+		Call MyPrint("No output file selected - selection cancelled.")
+		Note "No output file selected - selection cancelled."
 		Exit Sub
 	End If
 
@@ -1794,7 +1931,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 		Exit Sub
 
 	Else
-		Call MyPrint("Total record length = " + FormatNumber$(iRowLength) + " bytes")
+		Call MyPrint("Total record length = " + FormatNumber$(iRowLength) + " bytes.")
 	End If
 
 	'-------------------------------------------------
@@ -1804,12 +1941,12 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	iDataSize = ((iRowLength * iRecTotal) / 1024) + 1
 
 	If iDataSize > (1024 * 1024) Then
-		Call MyPrint("Total data size = " + FormatNumber$(iDataSize) + " Kb (" + FormatNumber$(Round(iDataSize / (1024 * 1024), 0.01)) + " Gb)")
+		Call MyPrint("Total data size = " + FormatNumber$(iDataSize) + " Kb (" + FormatNumber$(Round(iDataSize / (1024 * 1024), 0.01)) + " Gb).")
 	Else
 		If iDataSize > 1024 Then
-			Call MyPrint("Total data size = " + FormatNumber$(iDataSize) + " Kb (" + FormatNumber$(Round(iDataSize / 1024, 0.01)) + " Mb)")
+			Call MyPrint("Total data size = " + FormatNumber$(iDataSize) + " Kb (" + FormatNumber$(Round(iDataSize / 1024, 0.01)) + " Mb).")
 		Else
-			Call MyPrint("Total data size = " + FormatNumber$(iDataSize) + " Kb")
+			Call MyPrint("Total data size = " + FormatNumber$(iDataSize) + " Kb.")
 		End If
 	End If
 
@@ -1874,10 +2011,10 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	Dim bSpatialData As Logical
 	'If ColumnExists(sTableAlias, "Obj") Then
 	If TableInfo(sTableAlias, TAB_INFO_MAPPABLE) Then
-		Call MyPrint("Table contains spatial data")
+		Call MyPrint("Table contains spatial data.")
 		bSpatialData = True
 	Else
-		Call MyPrint("Table does not contain spatial data")
+		Call MyPrint("Table does not contain spatial data.")
 		bSpatialData = False
 	End If
 
@@ -1886,6 +2023,7 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	' the species records temporary table
 	'-------------------------------------------------
 	Dim nStmt3 As Integer
+	Call MyPrint("Deleting temporary table ...")
 	nStmt3 = Server_Execute(nConn, "EXECUTE " + sDefaultSchema + ".AFClearSppSubset '" + sDefaultSchema
 	 + "', '" + sTableName + "', '" + sUser + "'")
 
@@ -1895,6 +2033,12 @@ Sub SelectSpecies (ByVal nConn As Integer,
 	Server nStmt3 Close
 
 	Set ProgressBars Off
+
+	If ColumnExists(sTableAlias, "MI_STYLE") Or
+	   ColumnExists(sTableAlias, "MI_PRINX") Or
+	   ColumnExists(sTableAlias, "MI_SQL_REC_NUM") Then
+		Call MyPrint("Dropping unwanted columns ...")
+	End If
 
 	'-------------------------------------------------
 	' If the local table contains a MI_STYLE
@@ -2183,22 +2327,26 @@ Sub SelectSpecies (ByVal nConn As Integer,
 				Dim iWin as Integer
 				iWin = FrontWindow()
 				If WindowInfo(iWin, WIN_INFO_TYPE) = WIN_MAPPER Then
+					Call MyPrint("Adding table to map window ...")
 					Add Map Layer sTableAlias
 				Else
+					Call MyPrint("Mapping table in map window ...")
 					Map From sTableAlias
 				End If
 			Else
+				Call MyPrint("Mapping table in map window ...")
 				Map From sTableAlias
 			End If
 
 		Else
 
+			Call MyPrint("Table does not have graphic information. Table not mapped.")
+
 	 		'-------------------------------------------------
 			' Opens the table in a browser window
 			'-------------------------------------------------
+			Call MyPrint("Opening table in browser window ...")
 			Browse * From sTableAlias
-
-			Call MyPrint("Table does not have graphic information. Table not mapped.")
 
 		End If
 
@@ -2255,7 +2403,7 @@ Sub PlotSpatialData
 	Dim iRows As Integer
 	iRows = TableInfo(NewObj, TAB_INFO_NROWS)
 
-	Call MyPrint("Plotting " + FormatNumber$(iRows) + " rows as points or polygons")
+	Call MyPrint("Plotting " + FormatNumber$(iRows) + " rows as points or polygons.")
 
 	'-------------------------------------------------
 	' If any rows were selected then set the object
@@ -2384,6 +2532,7 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 	Dim hXMLDoc As MIXmlDocument
 	Dim hXMLRoot As MIXmlNode
 	Dim hXMLNode As MIXmlNode
+
 	Dim hXMLMapInfoTableNode As MIXmlNode
 	Dim hXMLSymbolSetNode As MIXmlNode
 	Dim hXMLSymbologyNode As MIXmlNode
@@ -2490,7 +2639,7 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 						Dim iRows As Integer
 						iRows = TableInfo(NewStyle, TAB_INFO_NROWS)
 
-						Call MyPrint("Setting " + sObject + " style for " + FormatNumber$(iRows) + " rows where " + sClause)
+						Call MyPrint("Setting " + sObject + " style for " + FormatNumber$(iRows) + " rows where " + sClause + " ...")
 
 						'-------------------------------------------------
 						' If any rows were selected then set the styles

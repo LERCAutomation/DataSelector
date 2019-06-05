@@ -19,13 +19,13 @@
 '* along with DataExtractor.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector.def v1.04
+'* DataSelector.def v1.05
 '*
 '* Defines global variables and declares subroutines and functions.
 '*
 '*
 '* Created:			Andy Foy - June 2015
-'* Last revised:	Andy Foy - October 2018
+'* Last revised:	Andy Foy - June 2019
 '***************************************************************
 
 Include "MapBasic.def"
@@ -69,12 +69,56 @@ Type PROCESS_INFORMATION
 	dwThreadID As Integer
 End Type
 
+Type FILETIME
+   dwLowDateTime As Integer
+   dwHighDateTime As Integer
+End Type
+
+Type WIN32_FIND_DATA
+   dwFileAttributes As Integer
+   ftCreationTime As FILETIME
+   ftLastAccessTime As FILETIME
+   ftLastWriteTime As FILETIME
+   nFileSizeHigh As Integer
+   nFileSizeLow As Integer
+   dwReserved0 As Integer
+   dwReserved1 As Integer
+   cFileName As String * 260
+   cAlternate As String * 14
+End Type
+
+Type InTable
+	Node As String
+	TableName As String
+	Columns As String
+	WhereClause As String
+	SortOrder As String
+	BufferSize As Integer
+	DissolveSize As Integer
+End Type
+
+Type OutColumn
+	Node As String
+	ColumnName As String
+	ColumnType As String
+End Type
+
+Type ColumnValues
+	ValKey As String
+	ValMin As String
+	ValMax As String
+	ValFirst As String
+	ValCommon As String
+	ValList As String
+End Type
+
 '-------------------------------------------------
 ' Define the custom keywords
 '-------------------------------------------------
 Define NORMAL_PRIORITY_CLASS &H20
 Define INFINITE -1
 Define STRING_LEN 1024
+Define FILE_ATTRIBUTE_DIRECTORY 16
 
 '-------------------------------------------------
 ' Declare the subroutines
@@ -84,6 +128,7 @@ Declare Sub GetToolTitle
 Declare Sub CreateToolMenu
 	(ByVal sToolTitle As String)
 Declare Sub GetDefaultValues
+	(ByVal sXMLFile As String)
 Declare Sub DataSelector
 Declare Sub DialogSetup
 Declare Sub SaveQuery
@@ -125,6 +170,7 @@ Declare Sub PlotSpatialData
 	EastingCol As String,
 	NorthingCol As String,
 	PrecisionCol As String)
+Declare Sub GetXmlProfile
 
 Declare Sub MIXmlDocumentDestroy Lib MIXML_LIB_NAME
 	Alias "MIXmlDocumentDestroy" (
@@ -136,7 +182,7 @@ Declare Sub MIXmlNodeListDestroy Lib MIXML_LIB_NAME Alias "MIXmlNodeListDestroy"
 	ByVal hXMLNodeList As MIXmlNodeList)
 Declare Sub MIXmlAttributeListDestroy Lib MIXML_LIB_NAME Alias "MIXmlAttributeListDestroy" (
 	ByVal hXMLAttributeList As MIXmlNamedNodeMap)
-
+	
 '-------------------------------------------------
 ' Declare the functions
 '-------------------------------------------------
@@ -168,6 +214,11 @@ Declare Function SetStylePolygon(
 	ByVal oObj As Object,
 	ByVal stlPen As Pen,
 	ByVal stlBrush As Brush) As Object
+Declare Function GetFileList
+	(ByVal sFilePath As String,
+	ByVal sFileFilter As String,
+	sFileList() As String,
+	sFileExclude As String) As Logical
 
 Declare Function CreateDirectory Lib "kernel32"
 	Alias "CreateDirectoryA"
@@ -216,6 +267,16 @@ Declare Function CreateProcessA Lib "kernel32"
 	lpProcessInformation As PROCESS_INFORMATION) As Integer
 Declare Function GetUserName Lib "advapi32.dll" Alias "GetUserNameA" 
   (lpBuffer As String, nSize As Integer) As Integer
+Declare Function FindFirstFile Lib "kernel32"
+	Alias "FindFirstFileA"
+	(ByVal lpFileName As String,
+	lpFindFileData As WIN32_FIND_DATA) As Integer
+Declare Function FindNextFile Lib "kernel32"
+	Alias "FindNextFileA"
+	(ByVal hFindFile As Integer,
+	lpFindFileData As WIN32_FIND_DATA) As Integer
+Declare Function FindClose Lib "kernel32"
+	(ByVal hFindFile As Integer) As Integer
 
 Declare Function MIXmlDocumentCreate Lib MIXML_LIB_NAME
 	Alias "MIXmlDocumentCreate" () As MIXmlDocument
@@ -278,6 +339,11 @@ Global sUserId As String
 Global sToolTitle As String
 Global sDialogSize As String
 
+Global iXMLFile As Integer
+Global sXMLFile As String
+Global sDefaultXMLFile As String
+Global iDefaultXMLFile As Integer
+
 Global sDefaultExtractPath As String
 Global sDefaultQueryPath As String
 Global sDefaultFormat As String
@@ -292,6 +358,7 @@ Global sDefaultPointPrecision As String
 Global sXColumn As String
 Global sYColumn As String
 Global sSizeColumn As String
+Global sDefaultClearLogFile As String
 
 Global aSQLTables(99) As String
 Global aSQLColumns(99) As String
