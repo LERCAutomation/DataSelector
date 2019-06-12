@@ -707,7 +707,7 @@ Sub DataSelector
 		ID 8
 		Title "Clear log file?"
 		Position 10,290 + iDialogMax
-		Value bDefaultClearLogFile
+		Value FALSE
 		'Into bClearLog
 
 	'-------------------------------------------------

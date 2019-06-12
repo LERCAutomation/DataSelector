@@ -32,11 +32,11 @@ Include "MapBasic.def"
 Include "Menu.def"
 Include "Icons.def"
 
-Include "XMLMenu32.def"
+'Include "XMLMenu32.def"
 
-'Include "IMapInfoPro.def"
-'Include "Enums.def"
-'Include "XMLMenu64.def"
+Include "IMapInfoPro.def"
+Include "Enums.def"
+Include "XMLMenu64.def"
 
 '-------------------------------------------------
 ' Define the custom variable types
