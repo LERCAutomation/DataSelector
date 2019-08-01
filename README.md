@@ -1,9 +1,9 @@
-Data Selector
-=============
+DataSelector
+============
 
-Data Selector Tool v1.03
+DataSelector tool
 
-Copyright © 2015 TVERC, GiGL
+Copyright © 2015-2019 TVERC, GiGL, SBIC
 
 Overview
 --------
@@ -11,7 +11,7 @@ DataSelector is a MapBasic tool and associated SQL scripts to extract biodiversi
 
 Requirements
 ------------
-The Data Selector Tool requires the following:
+The DataSelector tool requires the following:
 
  - MapInfo 10.0 or higher
 
@@ -20,12 +20,12 @@ The Data Selector Tool requires the following:
 
 Source Code
 -----------
-The source code for the Data Selector Tool is open source and can be downloaded from:
+The source code for the DataSelector tool is open source and can be downloaded from:
 <https://github.com/LERCAutomation/DataSelector-MapInfo>
 
 License Information
 -------------------
-The Data Selector Tool is free software. You can redistribute it and/or modify it
+The DataSelector tool is free software. You can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the Free
 Software Foundation, either version 3 of the License, or (at your option) any
 later version.
@@ -34,3 +34,11 @@ See the file "License.txt" supplied with the source files for information on the
 terms & conditions for usage and copying, and a DISCLAIMER OF ALL WARRANTIES
 or see <http://www.gnu.org/licenses> for more details of the GNU General Public
 License.
+
+Funding
+-------
+The DataSelector tool was developed with funding from:
+
+* Thames Valley Environmental Records Centre
+* Greenspace Information for Greater London CIC
+* Surrey Biodiversity Information Centre
