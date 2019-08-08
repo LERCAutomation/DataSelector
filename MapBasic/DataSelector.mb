@@ -1,7 +1,7 @@
 '* DataSelector is a MapBasic tool and associated SQL scripts to extract
 '* biodiversity information from SQL Server based on any selection criteria.
 '*
-'* Copyright © 2015 - 2018 TVERC, GiGL, SBIC
+'* Copyright © 2015 - 2019 TVERC, GiGL, SBIC
 '* 
 '* This file is part of the MapInfo tool 'DataSelector'.
 '* 
@@ -19,7 +19,7 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector v1.0.22
+'* DataSelector v1.0.23
 '*
 '* Creates a dialog window which lists the SQL tables
 '* in the remote SQL Server and allows the user to enter a
@@ -29,7 +29,13 @@
 '* of the selected records.
 '*
 '* Created:         Andy Foy - June 2015
-'* Last revised:    Andy Foy - June 2019
+'* Last revised:    Andy Foy - July 2019
+'*
+'* *******************  Version 1.0.23  ***************
+'* Author: Andy Foy		Date: 01/07/2019
+'* A. Enable loading XML profiles when running in 64bit.
+'* B. Create log file path if missing.
+'* C. Add details of funding organisations to About box.
 '*
 '* *******************  Version 1.0.22  ***************
 '* Author: Andy Foy		Date: 05/06/2019
@@ -165,7 +171,7 @@ Sub Main
 	'-------------------------------------------------
 	' Set the version number
 	'-------------------------------------------------
-	sVersion = "1.0.22"
+	sVersion = "1.0.23"
 
 	'-------------------------------------------------
 	' Get the title for the Tool menu
@@ -265,7 +271,7 @@ CleanUp:
 
 GetTitleError:
 	Note "Unable to get tool title from XML config file.  Using default title 'Data Selector'."
-	Exit Sub
+	Goto CleanUp
 
 End Sub
 
@@ -438,6 +444,26 @@ Sub GetDefaultValues(ByVal sXMLFile As String)
 
 	End If
 
+	'-------------------------------------------------
+	' Create the log file directory path if it doesn't
+	' already exist
+	'-------------------------------------------------
+	Dim iSuccess, iSecurity As Integer
+	iSecurity = 0
+
+	iSuccess = SetCurrentDirectory(sLogFilePath)
+	if iSuccess = 0 Then
+		'Call MyPrint("Creating log file path '" + sLogFilePath + "'")
+		'iSuccess = CreateDirectory(sLogFilePath , iSecurity)
+		iSuccess = SHCreateDirectoryEx(0, sLogFilePath, iSecurity)
+		if iSuccess <> 0 Then
+			Call MyPrint("Error creating log file path")
+			Call MyPrint("Process terminated.")
+			sXMLFile = ""
+			Goto CleanUp
+		End If
+	End If
+
 CleanUp:
 	'-------------------------------------------------
 	' Destroy the handles
@@ -454,7 +480,7 @@ CleanUp:
 
 GetVariablesError:
 	Note str$(Err()) + ": " + Error$()
-	Exit Sub
+	Goto Cleanup
 
 End Sub
 
@@ -766,24 +792,39 @@ Sub GetXMLProfile()
 	'-------------------------------------------------
     OnError Goto ErrorTrap
 
-	Dim sFileExclude As String
-	sFileExclude = "DataBuffer.xml"
-	
+	'-------------------------------------------------
+	' Get an array of all the XML profiles in the
+	' same file directory as the application
+	'-------------------------------------------------
 	Dim sDir As String
 	sDir = ApplicationDirectory$()
+	
+	Dim sFileExclude As String
+	sFileExclude = "DataSelector.xml"
 	
 	Dim bResult As Logical
 	Dim sFileNames() as String
 	bResult = GetFileList(sDir, "*.xml" , sFileNames(), sFileExclude)
 	
+	'-------------------------------------------------
+	' Loop through all the XML profiles
+	'-------------------------------------------------
 	Dim i as integer
 	Dim sXMLFiles As String
 	sXMLFiles = ""
+	iDefaultXMLFile = 0
 	If bResult = True And UBound(sFileNames()) > 0 Then
 	
 		For i = 1 to UBound(sFileNames())
 		
+			'-------------------------------------------------
+			' Build a string of the XML profiles
+			'-------------------------------------------------
 			sXMLFiles = sXMLFiles + sFileNames(i) + ";"
+			
+			If UCase$(sFileNames(i)) = UCase$(sDefaultXMLFile) Then
+				iDefaultXMLFile = i
+			End If
 	
 		Next
 		
@@ -805,7 +846,7 @@ Sub GetXMLProfile()
 	' Build a new dialog window
 	'-------------------------------------------------
 	Dialog
-		Title "Data Buffer " + sVersion
+		Title "Data Selector " + sVersion
 		Width 190
 		Height 80
 		Position 50, 70
@@ -2704,7 +2745,8 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 
 		Else
 
-			Note "Error : " + MIGetErrorMessage()
+			Note "Error : " + MIGetErrorMessage() + " - updating symbology in " + sLocalName
+			Call MyPrint("Error: " + MIGetErrorMessage() + " - updating symbology")
 
 		End If
 
@@ -2749,6 +2791,7 @@ CleanUp:
 
 GetSymbologyError:
 	Note str$(Err()) + ": " + Error$()
+	Call MyPrint("Error: " + str$(Err()) + " - " + Error$())
 	Goto CleanUp
 	Exit Sub
 
@@ -2781,7 +2824,7 @@ Sub AboutBox
 	Dialog
 		Title "About Data Selector " + sVersion
 		Width 230
-		Height 115
+		Height 155
 
 	Control StaticText
 		Title "This program will select records from a SQL Server table"
@@ -2801,8 +2844,20 @@ Sub AboutBox
 	Control StaticText
 		Title "Copyright© 2015 - 2018 TVERC, GiGL, SBIC."
 		Position 10,70
+	Control StaticText
+		Title "This tool was developed with funding from:"
+		Position 10,90
+	Control StaticText
+		Title "  - Thames Valley Environmental Records Centre"
+		Position 10,100
+	Control StaticText
+		Title "  - Surrey Biodiversity Information Centre"
+		Position 10,110
+	Control StaticText
+		Title "  - Greenspace Information for Greater London CIC"
+		Position 10,120
 	Control OKButton
-		Position 185,95
+		Position 185,135
 
 End Sub
 

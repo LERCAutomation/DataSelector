@@ -72,7 +72,7 @@ as a spreadsheet.
 
 	<!-- The default for whether the symbology should be set for .tab files or not -->
 	<DefaultSymbologySet>
-		<value>2</value>
+		<value>1</value>
 	</DefaultSymbologySet>
 
 	<!-- The default for whether the SQL database tables will be spatially plotted. Leave blank to hide option in dialog. -->
