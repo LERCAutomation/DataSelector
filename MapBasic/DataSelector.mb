@@ -2,6 +2,7 @@
 '* biodiversity information from SQL Server based on any selection criteria.
 '*
 '* Copyright © 2015 - 2019 TVERC, GiGL, SBIC
+'* Copyright © 2020 - 2021 Andy Foy Consulting
 '* 
 '* This file is part of the MapInfo tool 'DataSelector'.
 '* 
@@ -19,7 +20,7 @@
 '* along with DataSelector.  If not, see <http://www.gnu.org/licenses/>.
 '*
 '***************************************************************
-'* DataSelector v1.0.23
+'* DataSelector v1.0.24
 '*
 '* Creates a dialog window which lists the SQL tables
 '* in the remote SQL Server and allows the user to enter a
@@ -29,7 +30,13 @@
 '* of the selected records.
 '*
 '* Created:         Andy Foy - June 2015
-'* Last revised:    Andy Foy - July 2019
+'* Last revised:    Andy Foy - March 2021
+'*
+'* *******************  Version 1.0.24  ***************
+'* Author: Andy Foy		Date: 26/03/2021
+'* A. Fix bug loading multiple symbology sets.
+'* B. Remove check for size column before setting
+'*    symbology.
 '*
 '* *******************  Version 1.0.23  ***************
 '* Author: Andy Foy		Date: 01/07/2019
@@ -58,8 +65,8 @@
 '*
 '* *****************  Version 1.0.18  ***************
 '* Author: Andy Foy		Date: 16/03/2018
-'* A. Check top window is map window before trying to add
-'*    output layer.
+'* A. Check top window is map window before trying to
+'*    add output layer.
 '*
 '* *****************  Version 1.0.17  ***************
 '* Author: Andy Foy		Date: 09/11/2017
@@ -171,7 +178,7 @@ Sub Main
 	'-------------------------------------------------
 	' Set the version number
 	'-------------------------------------------------
-	sVersion = "1.0.23"
+	sVersion = "1.0.24"
 
 	'-------------------------------------------------
 	' Get the title for the Tool menu
@@ -409,6 +416,9 @@ Sub GetDefaultValues(ByVal sXMLFile As String)
 					' Loop through all the elements in the node list
 					' storing the symbol set names
 					'-------------------------------------------------
+					Redim aSymbolNodes(99)
+					Redim aSymbolDescs(99)
+
 					Dim i As Integer
 					i = 1
 					aSymbolNodes(i) = ""
@@ -2267,47 +2277,32 @@ Sub SelectSpecies (ByVal nConn As Integer,
 
 				Call MyPrint("Setting symbology in table ...")
 
+				Set ProgressBars Off
+
 				'-------------------------------------------------
-				' If the local table contains a size
-				' column (which the symbology is based on)
+				' Add an index to the precision field to speed
+				' up the symbology setting
 				'-------------------------------------------------
+				'Create Index On sTableAlias(sSizeCol)
 
-				If ColumnExists(sTableAlias, sSizeCol) Then
+				'-------------------------------------------------
+				' Turn on FastEdit to speed up the updates
+				'-------------------------------------------------
+				Set Table sTableAlias FastEdit On
 
-					Set ProgressBars Off
+				'-------------------------------------------------
+				' Set the symbology for the table
+				'-------------------------------------------------
+				Dim sNodeName As String
+				sNodeName = aSymbolNodes(iSymbologySet)
+				Call SetSymbology(sNodeName, sTableAlias)
 
-					'-------------------------------------------------
-					' Add an index to the precision field to speed
-					' up the symbology setting
-					'-------------------------------------------------
-					'Create Index On sTableAlias(sSizeCol)
+				'-------------------------------------------------
+				' Turn off FastEdit after updates
+				'-------------------------------------------------
+				Set Table sTableAlias FastEdit Off
 
-					'-------------------------------------------------
-					' Turn on FastEdit to speed up the updates
-					'-------------------------------------------------
-					Set Table sTableAlias FastEdit On
-
-					'-------------------------------------------------
-					' Set the symbology for the table
-					'-------------------------------------------------
-					Dim sNodeName As String
-					sNodeName = aSymbolNodes(iSymbologySet)
-					Call SetSymbology(sNodeName, sTableAlias)
-
-					'-------------------------------------------------
-					' Turn off FastEdit after updates
-					'-------------------------------------------------
-					Set Table sTableAlias FastEdit Off
-
-					Set ProgressBars On
-
-				Else
-
-					Call MyPrint("Table does not contain a size column - unable to set symbology.")
-					Note "Table does not contain a size column - unable to set symbology."
-
-				End If
-
+				Set ProgressBars On
 
 			End If
 
@@ -2592,7 +2587,7 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 		' Load the document into the document handle
 		'-------------------------------------------------
 		Dim iXMLLoad As SmallInt
-		iXMLLoad = MIXmlDocumentLoad(hXMLDoc, ApplicationDirectory$() + "DataSelector.xml", bParseError, FALSE, FALSE)
+		iXMLLoad = MIXmlDocumentLoad(hXMLDoc, ApplicationDirectory$() + sXMLFile, bParseError, FALSE, FALSE)
 		if iXMLLoad > 0 Then
 
 			'-------------------------------------------------
@@ -2608,7 +2603,7 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 	          	If hXMLNode Then
 	
 					'-------------------------------------------------
-					' Get a handle on the SpeciesTables node
+					' Get a handle on the MapInfoTables node
 					'-------------------------------------------------
 					hXMLMapInfoTableNode = MIXmlSelectSingleNode(hXMLNode, "MapInfoTables")
 
@@ -2640,6 +2635,10 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 					i = 0
 					Do while hXMLSymbolNode
 						
+						If i = 0 Then
+							Call MyPrint("Setting symbology in table ...")
+						End If
+
 						'-------------------------------------------------
 						' Close the temporary NewStyle table if it is
 						' already/still open in the current MapInfo session
@@ -2652,12 +2651,14 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 
 						'-------------------------------------------------
 						' Set the SQL clause used to retrieve the
-						' required rows from the species table
+						' required rows from the MapInfo table
 						'-------------------------------------------------
 						Dim sClause As String
 						sClause = GetSingleNodeValue(hXMLSymbolNode, "Clause")
-						If sClause <> "" Then
-							sClause = " And " + sClause
+						Dim sSQLClause As String
+						sSQLClause = sClause
+						If sSQLClause <> "" Then
+							sSQLClause = " And (" & sSQLClause & ")"
 						End If
 
 						'-------------------------------------------------
@@ -2671,7 +2672,7 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 						' matching the required SQL clause
 						'-------------------------------------------------
 						Dim sCmd As String
-						sCmd = "Select * From " + sLocalName + " Where Str$(obj) = """ + sObject + """ " + sClause + " Into NewStyle NoSelect"
+						sCmd = "Select * From " + sLocalName + " Where Str$(obj) = """ + sObject + """ " + sSQLClause + " Into NewStyle NoSelect"
 						Run Command (sCmd)
 
 						'-------------------------------------------------
@@ -2680,7 +2681,7 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 						Dim iRows As Integer
 						iRows = TableInfo(NewStyle, TAB_INFO_NROWS)
 
-						Call MyPrint("Setting " + sObject + " style for " + FormatNumber$(iRows) + " rows where " + sClause + " ...")
+						Call MyPrint("Setting " + sObject + " style for " + FormatNumber$(iRows) + " rows where ... " + sClause)
 
 						'-------------------------------------------------
 						' If any rows were selected then set the styles
@@ -2736,8 +2737,14 @@ Sub SetSymbology(sNodeName as String, sLocalName As String)
 					'-------------------------------------------------
 					' Save the updates
 					'-------------------------------------------------
-					sCmd = "Commit Table NewStyle"
-					Run Command (sCmd)
+					If TableIsOpen("NewStyle") Then
+						sCmd = "Commit Table NewStyle"
+						Run Command (sCmd)
+					End If
+
+					If i > 0 Then
+						Call MyPrint("Symbology complete.")
+					End If
 
 				End If
 
@@ -2824,7 +2831,7 @@ Sub AboutBox
 	Dialog
 		Title "About Data Selector " + sVersion
 		Width 230
-		Height 155
+		Height 165
 
 	Control StaticText
 		Title "This program will select records from a SQL Server table"
@@ -2842,22 +2849,25 @@ Sub AboutBox
 		Title "Created by Andy Foy Consulting."
 		Position 10,60
 	Control StaticText
-		Title "Copyright© 2015 - 2018 TVERC, GiGL, SBIC."
+		Title "Copyright© 2015-2019 GiGL, TVERC, SBIC."
 		Position 10,70
 	Control StaticText
-		Title "This tool was developed with funding from:"
-		Position 10,90
+		Title "Copyright© 2020-21 Andy Foy Consulting."
+		Position 10,80
 	Control StaticText
-		Title "  - Thames Valley Environmental Records Centre"
+		Title "This tool was developed with funding from:"
 		Position 10,100
 	Control StaticText
-		Title "  - Surrey Biodiversity Information Centre"
+		Title "  - Greenspace Information for Greater London CIC"
 		Position 10,110
 	Control StaticText
-		Title "  - Greenspace Information for Greater London CIC"
+		Title "  - Thames Valley Environmental Records Centre"
 		Position 10,120
+	Control StaticText
+		Title "  - Surrey Biodiversity Information Centre"
+		Position 10,130
 	Control OKButton
-		Position 185,135
+		Position 185,145
 
 End Sub
 
